@@ -137,8 +137,67 @@ Las demás pruebas no se descartaron por ser incorrectas, sino porque incluían 
 
 La propuesta de Copilot era más completa de lo necesario para esta etapa. Algunas pruebas, especialmente la de escalamiento e inmutabilidad, incluían comprobaciones como `is not` y comparación de múltiples atributos. Aunque esas pruebas podían ser correctas, todavía no puedo explicar con seguridad cada una de esas decisiones.
 
-También se omitió la prueba de serialización porque todavía no comprendía con suficiente claridad la necesidad de verificar el formato exacto en `bytes`.
-
 Se decidió conservar cuatro pruebas sencillas y distintas entre sí. Estas permiten comprobar un cálculo correcto, una condición de error, una comparación booleana y una clasificación.
 
-La selección final prioriza que cada línea pueda ser entendida y explicada, en lugar de mantener una batería más extensa solo por haber sido generada por la IA.
+
+### Entrada 3 — Propuesta para completar la máquina de estados finita
+
+#### Objetivo
+
+Obtener una propuesta para completar la clase `TrafficLightFSM`, encargada de representar el funcionamiento de un semáforo mediante programación orientada a objetos.
+
+#### Herramienta utilizada
+
+`GitHub Copilot`
+
+#### Prompt utilizado
+
+> Estoy desarrollando una máquina de estados finita para representar el funcionamiento de un semáforo mediante programación orientada a objetos en Python.
+>
+> Hasta ahora definí una enumeración llamada `TrafficLightState` con los estados `RED`, `YELLOW` y `GREEN`. También creé una clase llamada `TrafficLightFSM` con un constructor que inicia el estado del semáforo en `RED` y un contador de transiciones en `0`.
+>
+> Me quedé bloqueado y no sé cómo continuar la estructura de la clase. Sugiere el código necesario para consultar el estado actual sin modificarlo directamente, consultar el contador de transiciones y realizar la secuencia `RED → GREEN → YELLOW → RED`, aumentando el contador en cada transición.
+>
+> Por el momento no escribas pruebas. Mantén la solución sencilla, con anotaciones de tipo y fácil de comprender y explicar.
+
+#### Propuesta de la IA
+
+Copilot propuso completar la clase con:
+
+- una propiedad `state` para consultar el estado actual;
+- una propiedad `transitions` para consultar el número de transiciones realizadas;
+- un método llamado `advance`;
+- condicionales `if` y `elif` para determinar el siguiente estado;
+- incremento del contador después de cada transición;
+- anotaciones de tipo y docstrings.
+
+La secuencia propuesta fue:
+
+- `RED` a `GREEN`;
+- `GREEN` a `YELLOW`;
+- `YELLOW` a `RED`.
+
+#### Decisión tomada
+
+La propuesta no se aceptó de forma completa. Se decidió conservar las propiedades, las anotaciones de tipo, los docstrings y el incremento del contador.
+
+#### Cambios realizados
+
+- Se conservó la propiedad `state`.
+- Se cambió la propiedad `transitions` por `cycle_count`.
+- Se cambió el método `advance` por `transition`.
+- Se modificó el tipo de retorno del método de `None` a `TrafficLightState`.
+- Se reemplazó la estructura basada en `if` y `elif` por un diccionario de transiciones.
+- Se agregó el retorno del nuevo estado después de cada transición.
+- Se conservaron docstrings sencillas para explicar el propósito de cada propiedad y método.
+- No se copiaron los marcadores `# ...existing code...`.
+
+#### Justificación
+
+La propuesta de Copilot era funcional, pero algunos elementos no coincidían completamente con la estructura planteada en la actividad.
+
+El método se cambió de `advance` a `transition` para utilizar un nombre más relacionado con una máquina de estados. La propiedad `cycle_count` se eligió para mantener consistencia con el atributo interno `_cycle_count`.
+
+También se decidió utilizar un diccionario de transiciones porque permite representar directamente la relación entre el estado actual y el siguiente estado. De esta forma, la secuencia queda definida sin utilizar varios bloques condicionales.
+
+Finalmente, se agregó el retorno del nuevo estado para que el resultado de cada transición pueda consultarse directamente y utilizarse posteriormente en las pruebas.s
