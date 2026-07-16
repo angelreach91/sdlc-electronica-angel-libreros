@@ -200,4 +200,68 @@ El método se cambió de `advance` a `transition` para utilizar un nombre más r
 
 También se decidió utilizar un diccionario de transiciones porque permite representar directamente la relación entre el estado actual y el siguiente estado. De esta forma, la secuencia queda definida sin utilizar varios bloques condicionales.
 
-Finalmente, se agregó el retorno del nuevo estado para que el resultado de cada transición pueda consultarse directamente y utilizarse posteriormente en las pruebas.s
+Finalmente, se agregó el retorno del nuevo estado para que el resultado de cada transición pueda consultarse directamente y utilizarse posteriormente en las pruebas
+
+### Entrada 4 — Propuesta y corrección de pruebas para la máquina de estados
+
+#### Objetivo
+
+Obtener una primera propuesta de pruebas con `pytest` para comprobar el funcionamiento de la máquina de estados finita implementada en `fsm_demo.py`.
+
+#### Herramienta utilizada
+
+`GitHub Copilot`
+
+#### Prompt utilizado
+
+> Estoy trabajando en una máquina de estados finita para un semáforo en Python. Ya tengo una clase llamada `TrafficLightFSM` que inicia en `RED`, cambia siguiendo la secuencia `RED → GREEN → YELLOW → RED` y lleva un contador de transiciones.
+>
+> Ahora necesito crear el archivo `test_fsm.py` con pruebas usando `pytest`, pero todavía no sé bien cómo estructurarlas.
+>
+> Ayúdame a proponer cuatro pruebas sencillas para comprobar:
+>
+> - que el estado inicial sea `RED`;
+> - que una transición cambie de `RED` a `GREEN`;
+> - que tres transiciones completen el ciclo y regresen a `RED`;
+> - que el contador de transiciones aumente correctamente.
+>
+> No modifiques `fsm_demo.py`. Mantén las pruebas simples, fáciles de entender y con nombres descriptivos. No agregues casos adicionales por ahora.
+
+#### Propuesta de la IA
+
+Copilot propuso cuatro pruebas:
+
+1. Comprobar que el estado inicial fuera rojo.
+2. Comprobar la transición de rojo a verde.
+3. Comprobar que tres transiciones completaran el ciclo y regresaran a rojo.
+4. Comprobar que el contador aumentara después de ejecutar transiciones.
+
+La estructura general de las pruebas era adecuada, pero la primera propuesta contenía algunos errores relacionados con los nombres y elementos definidos en mi implementación.
+
+Copilot no importó inicialmente `TrafficLightState` y en las comprobaciones utilizó directamente nombres como `RED` y `GREEN`. También utilizó una propiedad llamada `counter`, aunque en mi clase la propiedad definida se llamaba `cycle_count`.
+
+#### Decisión tomada
+
+La propuesta no se aceptó directamente. Se revisó cada prueba y se corrigieron los nombres para que coincidieran con la implementación real de `fsm_demo.py`.
+
+Se conservaron las cuatro pruebas porque correspondían con los puntos solicitados en la guía, pero se modificaron las importaciones y las expresiones utilizadas en los `assert`.
+
+#### Cambios realizados
+
+- Se agregó `TrafficLightState` a la importación desde `fsm_demo.py`.
+- Se reemplazó el uso de `counter` por `cycle_count`.
+- Se corrigieron las comprobaciones de estado para utilizar los miembros completos de la enumeración.
+- En la primera prueba se cambió la comparación a `TrafficLightState.RED`.
+- En la segunda prueba se cambió la comparación a `TrafficLightState.GREEN`.
+- En la tercera prueba se cambió la comparación final a `TrafficLightState.RED`.
+- Se conservaron los nombres descriptivos de las cuatro funciones de prueba.
+- Se mantuvo una instancia nueva de `TrafficLightFSM` dentro de cada prueba para que fueran independientes.
+
+#### Justificación
+
+Durante el primer intento de ejecución y revisión de las pruebas se detectó que Copilot no había tomado en cuenta completamente los nombres utilizados en mi código.
+
+La clase no tenía una propiedad llamada `counter`, por lo que Pylance marcaba error al intentar acceder a ese atributo. La propiedad correcta era `cycle_count`, ya que ese era el nombre definido previamente en `TrafficLightFSM`.
+
+También fue necesario importar `TrafficLightState`, porque los estados `RED`, `GREEN` y `YELLOW` no estaban definidos como variables independientes. Estos valores pertenecen a la enumeración, por lo que deben escribirse como `TrafficLightState.RED`, `TrafficLightState.GREEN` respectivamente dependiendo lo que quieras comprobar con assert.
+
