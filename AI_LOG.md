@@ -265,3 +265,103 @@ La clase no tenía una propiedad llamada `counter`, por lo que Pylance marcaba e
 
 También fue necesario importar `TrafficLightState`, porque los estados `RED`, `GREEN` y `YELLOW` no estaban definidos como variables independientes. Estos valores pertenecen a la enumeración, por lo que deben escribirse como `TrafficLightState.RED`, `TrafficLightState.GREEN` respectivamente dependiendo lo que quieras comprobar con assert.
 
+# Entrada 4 - Aplicación de los principios SOLID S, O y L
+
+## Objetivo
+
+Utilizar herramientas de inteligencia artificial como apoyo para proponer y adaptar una solución que demostrara los principios de responsabilidad única, abierto/cerrado y sustitución de Liskov en el dominio de sensores.
+
+La actividad debía incluir un ejemplo “mal”, un ejemplo “bien” y dos pruebas por cada principio en los archivos:
+
+- `semana1/miercoles_15_de_julio/solid_srp_ocp_lsp.py`
+- `semana1/miercoles_15_de_julio/test_solid_srp_ocp_lsp.py`
+
+## Herramientas utilizadas
+
+- GitHub Copilot, para obtener una primera propuesta de estructura y código.
+- Codex, para revisar la propuesta inicial y aplicar las adaptaciones seleccionadas.
+
+## Prompt utilizado con GitHub Copilot
+
+> Ayúdame a proponer la estructura y el código completo para la actividad del miércoles sobre los principios SOLID S, O y L aplicados a sensores.
+>
+> Voy a trabajar con los archivos `solid_srp_ocp_lsp.py` y `test_solid_srp_ocp_lsp.py`. En el primer archivo necesito un ejemplo “mal” y uno “bien” de cada principio. Para S se deben separar las responsabilidades de `SensorReader` y `DataLogger`; para O se debe utilizar `AlertStrategy`, `ConsoleAlert`, `FileAlert` y `AnomalyDetector`; y para L se debe comprobar que `TemperatureSensor` y `HumiditySensor` funcionen donde se espere `BaseSensor`.
+>
+> En el segundo archivo necesito dos pruebas con pytest por cada principio, seis en total. Utiliza type hints, clases abstractas cuando sea necesario y valores simulados para no depender de sensores reales. Primero muéstrame la estructura y después el código completo de ambos archivos.
+
+## Propuesta de GitHub Copilot
+
+Copilot propuso una primera solución con:
+
+- Una clase que mezclaba la lectura y el almacenamiento de datos como ejemplo incorrecto de responsabilidad única.
+- `SensorReader` y `DataLogger` como separación correcta de responsabilidades.
+- Un detector con una alerta integrada como ejemplo incorrecto del principio abierto/cerrado.
+- Una estrategia de alertas con implementaciones para consola y archivo.
+- Una clase base para sensores y dos implementaciones intercambiables.
+- Seis pruebas, distribuidas en dos pruebas por principio.
+
+La propuesta servía como punto de partida, pero era extensa y contenía elementos que no aportaban directamente a la actividad o que no coincidían completamente con la estructura indicada en la guía.
+
+## Revisión y comprensión de la propuesta
+
+La propuesta no se incorporó de forma inmediata. Primero se revisó la responsabilidad de cada clase, la relación entre las abstracciones y sus implementaciones, y el propósito de cada prueba.
+
+Durante este análisis se identificó que:
+
+- No se utilizaba `SensorReading` para representar las mediciones.
+- Los métodos de las alertas y del detector tenían nombres distintos a los mostrados en la guía.
+- `AlertStrategy` no se había implementado mediante `ABC` y `abstractmethod`.
+- `FileAlert` simulaba un archivo mediante una lista en lugar de escribir realmente en uno.
+- El ejemplo incorrecto de Liskov no heredaba de `BaseSensor`.
+- `process_sensor()` devolvía una estructura más compleja de lo necesario.
+- El archivo de pruebas utilizaba una carga dinámica del módulo que dificultaba su comprensión.
+- Existían importaciones, tipos y configuraciones que no contribuían directamente a demostrar SOLID.
+
+La revisión también permitió comprender que los ejemplos “mal” no debían ser código escrito incorrectamente. Debían funcionar, pero mostrar una decisión de diseño que violara el principio correspondiente.
+
+## Prompt utilizado con Codex
+
+> Adapta los archivos `solid_srp_ocp_lsp.py` y `test_solid_srp_ocp_lsp.py` a partir de los problemas identificados en la propuesta de Copilot.
+>
+> Agrega `SensorReading`, identifica claramente los ejemplos “mal” y “bien”, utiliza `ABC` para las abstracciones, haz que `FileAlert` escriba realmente en un archivo y utiliza importaciones normales en las pruebas. Mantén dos pruebas por principio y elimina los elementos que no aporten al objetivo. No crees archivos adicionales ni realices el commit.
+
+## Propuesta de Codex
+
+Codex reorganizó la solución para:
+
+- Representar las mediciones mediante una dataclass inmutable.
+- Separar la lectura y el almacenamiento en el ejemplo correcto de SRP.
+- Mostrar explícitamente los condicionales que violan OCP.
+- Implementar `AlertStrategy` como una clase abstracta.
+- Permitir que `AnomalyDetector` trabajara con alertas de consola o archivo.
+- Hacer que los sensores de temperatura y humedad respetaran el contrato de `BaseSensor`.
+- Simplificar `process_sensor()` para que devolviera directamente una lectura.
+- Sustituir la carga dinámica del módulo por importaciones normales.
+- Mantener exactamente seis pruebas.
+
+## Decisión tomada
+
+Se decidió conservar la estructura general propuesta por las herramientas de IA, pero no aceptar automáticamente todo el código generado.
+
+Se mantuvieron los elementos que ayudaban a demostrar claramente los principios SOLID y se eliminaron o modificaron los que añadían complejidad innecesaria. También se conservaron comentarios y divisiones visibles para facilitar la identificación de los ejemplos “mal” y “bien”.
+
+Antes de aceptar la solución, se revisó qué responsabilidad tenía cada clase, por qué el ejemplo incorrecto violaba el principio y cómo el ejemplo correcto solucionaba el problema.
+
+## Cambios realizados
+
+- Se agregó `SensorReading` para representar el identificador y el valor de cada medición.
+- Se separaron `SensorReader` y `DataLogger`.
+- Se creó un detector incorrecto basado en condicionales.
+- Se implementaron `AlertStrategy`, `ConsoleAlert`, `FileAlert` y `AnomalyDetector`.
+- Se hizo que `FileAlert` escribiera en un archivo temporal durante las pruebas.
+- Se definió el contrato común `BaseSensor`.
+- Se incluyó un sensor incorrecto que no respeta ese contrato.
+- Se implementaron `TemperatureSensor` y `HumiditySensor` como sustituciones válidas.
+- Se escribieron dos pruebas por cada principio.
+- Se identificaron explícitamente mediante comentarios los ejemplos “mal” y “bien”.
+
+## Justificación
+
+La inteligencia artificial se utilizó para generar una primera propuesta y acelerar la reorganización del código, pero la solución no se aceptó sin revisión.
+
+El proceso incluyó la lectura y comprensión de las propuestas, la identificación de decisiones que no coincidían con la consigna y la selección de los elementos que realmente ayudaban a demostrar cada principio. La versión final fue el resultado de combinar las propuestas de las herramientas con una revisión razonada de su funcionamiento y de su utilidad para la actividad.
