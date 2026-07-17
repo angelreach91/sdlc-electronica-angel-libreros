@@ -364,7 +364,7 @@ La inteligencia artificial se utilizó para generar una primera propuesta y acel
 
 El proceso incluyó la lectura y comprensión de las propuestas, la identificación de decisiones que no coincidían con la consigna y la selección de los elementos que realmente ayudaban a demostrar cada principio. La versión final fue el resultado de combinar las propuestas de las herramientas con una revisión razonada de su funcionamiento y de su utilidad para la actividad.
 
-#### Entrada 5 — Revisión de ISP y DIP
+### Entrada 5 — Revisión de ISP y DIP
 
 #### Objetivo
 
