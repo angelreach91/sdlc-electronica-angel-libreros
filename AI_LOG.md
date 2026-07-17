@@ -265,9 +265,7 @@ La clase no tenía una propiedad llamada `counter`, por lo que Pylance marcaba e
 
 También fue necesario importar `TrafficLightState`, porque los estados `RED`, `GREEN` y `YELLOW` no estaban definidos como variables independientes. Estos valores pertenecen a la enumeración, por lo que deben escribirse como `TrafficLightState.RED`, `TrafficLightState.GREEN` respectivamente dependiendo lo que quieras comprobar con assert.
 
-# Entrada 4 - Aplicación de los principios SOLID S, O y L
-
-## Objetivo
+###### Objetivo
 
 Utilizar herramientas de inteligencia artificial como apoyo para proponer y adaptar una solución que demostrara los principios de responsabilidad única, abierto/cerrado y sustitución de Liskov en el dominio de sensores.
 
@@ -276,12 +274,12 @@ La actividad debía incluir un ejemplo “mal”, un ejemplo “bien” y dos pr
 - `semana1/miercoles_15_de_julio/solid_srp_ocp_lsp.py`
 - `semana1/miercoles_15_de_julio/test_solid_srp_ocp_lsp.py`
 
-## Herramientas utilizadas
+#### Herramientas utilizadas
 
 - GitHub Copilot, para obtener una primera propuesta de estructura y código.
 - Codex, para revisar la propuesta inicial y aplicar las adaptaciones seleccionadas.
 
-## Prompt utilizado con GitHub Copilot
+#### Prompt utilizado con GitHub Copilot
 
 > Ayúdame a proponer la estructura y el código completo para la actividad del miércoles sobre los principios SOLID S, O y L aplicados a sensores.
 >
@@ -289,7 +287,7 @@ La actividad debía incluir un ejemplo “mal”, un ejemplo “bien” y dos pr
 >
 > En el segundo archivo necesito dos pruebas con pytest por cada principio, seis en total. Utiliza type hints, clases abstractas cuando sea necesario y valores simulados para no depender de sensores reales. Primero muéstrame la estructura y después el código completo de ambos archivos.
 
-## Propuesta de GitHub Copilot
+#### Propuesta de GitHub Copilot
 
 Copilot propuso una primera solución con:
 
@@ -302,7 +300,7 @@ Copilot propuso una primera solución con:
 
 La propuesta servía como punto de partida, pero era extensa y contenía elementos que no aportaban directamente a la actividad o que no coincidían completamente con la estructura indicada en la guía.
 
-## Revisión y comprensión de la propuesta
+#### Revisión y comprensión de la propuesta
 
 La propuesta no se incorporó de forma inmediata. Primero se revisó la responsabilidad de cada clase, la relación entre las abstracciones y sus implementaciones, y el propósito de cada prueba.
 
@@ -319,13 +317,13 @@ Durante este análisis se identificó que:
 
 La revisión también permitió comprender que los ejemplos “mal” no debían ser código escrito incorrectamente. Debían funcionar, pero mostrar una decisión de diseño que violara el principio correspondiente.
 
-## Prompt utilizado con Codex
+#### Prompt utilizado con Codex
 
 > Adapta los archivos `solid_srp_ocp_lsp.py` y `test_solid_srp_ocp_lsp.py` a partir de los problemas identificados en la propuesta de Copilot.
 >
 > Agrega `SensorReading`, identifica claramente los ejemplos “mal” y “bien”, utiliza `ABC` para las abstracciones, haz que `FileAlert` escriba realmente en un archivo y utiliza importaciones normales en las pruebas. Mantén dos pruebas por principio y elimina los elementos que no aporten al objetivo. No crees archivos adicionales ni realices el commit.
 
-## Propuesta de Codex
+#### Propuesta de Codex
 
 Codex reorganizó la solución para:
 
@@ -339,7 +337,7 @@ Codex reorganizó la solución para:
 - Sustituir la carga dinámica del módulo por importaciones normales.
 - Mantener exactamente seis pruebas.
 
-## Decisión tomada
+#### Decisión tomada
 
 Se decidió conservar la estructura general propuesta por las herramientas de IA, pero no aceptar automáticamente todo el código generado.
 
@@ -347,7 +345,7 @@ Se mantuvieron los elementos que ayudaban a demostrar claramente los principios 
 
 Antes de aceptar la solución, se revisó qué responsabilidad tenía cada clase, por qué el ejemplo incorrecto violaba el principio y cómo el ejemplo correcto solucionaba el problema.
 
-## Cambios realizados
+#### Cambios realizados
 
 - Se agregó `SensorReading` para representar el identificador y el valor de cada medición.
 - Se separaron `SensorReader` y `DataLogger`.
@@ -360,8 +358,49 @@ Antes de aceptar la solución, se revisó qué responsabilidad tenía cada clase
 - Se escribieron dos pruebas por cada principio.
 - Se identificaron explícitamente mediante comentarios los ejemplos “mal” y “bien”.
 
-## Justificación
+#### Justificación
 
 La inteligencia artificial se utilizó para generar una primera propuesta y acelerar la reorganización del código, pero la solución no se aceptó sin revisión.
 
 El proceso incluyó la lectura y comprensión de las propuestas, la identificación de decisiones que no coincidían con la consigna y la selección de los elementos que realmente ayudaban a demostrar cada principio. La versión final fue el resultado de combinar las propuestas de las herramientas con una revisión razonada de su funcionamiento y de su utilidad para la actividad.
+
+#### Entrada 5 — Revisión de ISP y DIP
+
+#### Objetivo
+
+Revisar la estructura del archivo `solid_isp_dip.py` y comprobar que su funcionamiento cumpliera correctamente con los principios ISP y DIP.
+
+#### Herramienta utilizada
+
+Codex con el modelo GPT-5.6 Sol.
+
+#### Prompts utilizados
+
+Primera solicitud:
+
+> Revisa el archivo completo y verifica si la estructura cumple correctamente con ISP y DIP. Indica si existe algún error, código innecesario o elemento indispensable que falte. No modifiques el archivo y recomienda solamente cambios sencillos que pueda comprender y explicar.
+
+Segunda solicitud:
+
+> Comprueba el funcionamiento del repositorio y de `DataProcessor` mediante pruebas mínimas. Verifica el almacenamiento, la consulta de sensores inexistentes, el reemplazo de lecturas y la inyección de dependencias. No modifiques el código ni crees archivos adicionales.
+
+#### Propuesta de la IA
+
+En la primera revisión, Codex determinó que la estructura cumplía correctamente con ISP y DIP. Como ajuste principal, recomendó cambiar el nombre del protocolo `ReadableSensor` por `Readable` para coincidir exactamente con el enunciado. También señaló algunos espacios y líneas vacías que podían corregirse.
+
+En la segunda solicitud, Codex comprobó que `InMemoryRepository` guardaba y recuperaba lecturas, devolvía `None` para sensores inexistentes y reemplazaba la lectura anterior cuando se utilizaba el mismo identificador. También confirmó que `DataProcessor` funcionaba correctamente al recibir el repositorio mediante inyección de dependencias. Todas las comprobaciones resultaron satisfactorias.
+
+#### Decisión tomada
+
+Se aceptó el cambio de `ReadableSensor` por `Readable` porque coincidía con el nombre solicitado en la actividad. También se corrigieron los detalles de formato señalados. Las recomendaciones y los resultados fueron revisados y comprendidos antes de considerarse válidos.
+
+#### Cambios realizados
+
+- Se renombró `ReadableSensor` como `Readable`.
+- Se eliminaron espacios sobrantes.
+- Se ajustaron las líneas vacías entre las clases.
+- No se agregaron clases, dependencias ni implementaciones adicionales.
+
+#### Justificación
+
+Codex se utilizó como una herramienta de revisión y comprobación, no para reemplazar la comprensión del ejercicio. Sus observaciones permitieron confirmar que las interfaces estaban correctamente segregadas y que `DataProcessor` dependía de la abstracción `DataRepository`. La solución se mantuvo sencilla y limitada a los requisitos de la actividad.
