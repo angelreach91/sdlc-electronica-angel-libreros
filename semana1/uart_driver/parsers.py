@@ -203,3 +203,48 @@ class NMEAParser(MessageParser):
             "satellites": satellites,
             "altitude_m": altitude_m,
         }
+
+
+class CANParser(MessageParser):
+    """Parser para un formato CAN simplificado con fines educativos."""
+
+    def can_parse(self, frame: bytes) -> bool:
+        """Reconoce una posible trama del formato CAN simplificado."""
+        return len(frame) >= 6 and frame.startswith(b"CAN")
+
+    def parse(self, frame: bytes) -> ParsedMessage:
+        """Valida e interpreta una trama del formato CAN simplificado."""
+        if len(frame) < 6:
+            raise ValueError(
+                "La trama CAN simplificada está incompleta: "
+                "debe contener al menos seis bytes."
+            )
+
+        if not frame.startswith(b"CAN"):
+            raise ValueError(
+                "La trama no corresponde al formato CAN simplificado."
+            )
+
+        identifier = int.from_bytes(frame[3:5], byteorder="big")
+        if identifier > 0x7FF:
+            raise ValueError(
+                f"Identificador CAN fuera de rango: 0x{identifier:04x}."
+            )
+
+        dlc = frame[5]
+        if dlc > 8:
+            raise ValueError(f"DLC CAN fuera de rango: {dlc}.")
+
+        payload = frame[6:]
+        if len(payload) != dlc:
+            raise ValueError(
+                "La longitud de la carga útil CAN no coincide con el DLC: "
+                f"se esperaban {dlc} bytes y se recibieron {len(payload)}."
+            )
+
+        return {
+            "type": "CAN",
+            "identifier": identifier,
+            "dlc": dlc,
+            "data": payload.hex(),
+        }
