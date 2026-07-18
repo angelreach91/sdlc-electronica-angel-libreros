@@ -1,5 +1,14 @@
+from typing import Protocol
+
 from semana1.uart_driver.config import UartConfig
 from semana1.uart_driver.parsers import MessageParser, ParsedMessage
+
+
+class MessageBuffer(Protocol):
+    """Representa un destino para mensajes procesados."""
+
+    def append(self, item: ParsedMessage) -> None:
+        ...
 
 
 class UartDevice:
@@ -9,9 +18,11 @@ class UartDevice:
         self,
         config: UartConfig,
         parser: MessageParser,
+        buffer: MessageBuffer | None = None,
     ) -> None:
         self._config = config
         self._parser = parser
+        self._buffer: MessageBuffer | None = buffer
         self._is_connected = False
 
     @property
@@ -40,4 +51,9 @@ class UartDevice:
         if not self._parser.can_parse(frame):
             raise ValueError("El parser no reconoce la trama recibida.")
 
-        return self._parser.parse(frame)
+        result: ParsedMessage = self._parser.parse(frame)
+
+        if self._buffer is not None:
+            self._buffer.append(result)
+
+        return result
