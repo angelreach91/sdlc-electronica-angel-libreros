@@ -404,3 +404,364 @@ Se aceptó el cambio de `ReadableSensor` por `Readable` porque coincidía con el
 #### Justificación
 
 Codex se utilizó como una herramienta de revisión y comprobación, no para reemplazar la comprensión del ejercicio. Sus observaciones permitieron confirmar que las interfaces estaban correctamente segregadas y que `DataProcessor` dependía de la abstracción `DataRepository`. La solución se mantuvo sencilla y limitada a los requisitos de la actividad.
+
+### 17 de julio de 2026 — Análisis y planificación del driver UART
+
+#### Objetivo
+
+Comprender los requisitos de la actividad del viernes antes de comenzar a programar y definir una estructura que permitiera desarrollar un driver UART modular, verificable y con un nivel de alcance alto.
+
+#### Herramienta utilizada
+
+ChatGPT y Codex.
+
+#### Prompt utilizado
+
+> Analiza las instrucciones de la actividad del viernes y el checklist de cierre de la semana. Quiero desarrollar y entender paso a paso el driver UART solicitado. Primero necesito comprender el problema, identificar qué componentes debemos entregar y construir una base sólida que posteriormente pueda ser revisada y complementada con Codex.
+
+#### Propuesta de la IA
+
+La IA propuso dividir el problema en componentes independientes para evitar concentrar todas las responsabilidades en un solo archivo. La estructura sugerida contempló módulos para:
+
+- La configuración y validación de los parámetros UART.
+- La interpretación de diferentes protocolos.
+- La representación del dispositivo UART.
+- El almacenamiento de los mensajes procesados.
+- El manejo de un búfer circular.
+- La generación de registros estructurados.
+- Las pruebas automatizadas de cada componente.
+
+También se propuso trabajar de manera incremental: implementar un componente, comprender su responsabilidad, probarlo y después continuar con el siguiente.
+
+#### Decisión tomada
+
+Se aceptó la división modular porque correspondía con los principios SOLID estudiados durante la semana. Sin embargo, se decidió no generar todo el driver de una sola vez.
+
+El desarrollo se realizó por etapas para poder revisar cada propuesta, comprender el propósito de las clases y detectar posibles errores antes de avanzar. Codex se reservó principalmente para revisar y complementar partes específicas del trabajo.
+
+#### Cambios realizados
+
+- Se creó la estructura general del paquete `uart_driver`.
+- Se identificaron las responsabilidades principales del sistema.
+- Se estableció un orden de desarrollo para evitar mezclar configuración, procesamiento, almacenamiento y registro.
+- Se definió que los parsers serían dependencias intercambiables del dispositivo.
+
+#### Justificación
+
+La IA se utilizó inicialmente como apoyo para interpretar una actividad que todavía no se comprendía por completo. La división propuesta permitió convertir un problema amplio en componentes pequeños y manejables.
+
+La decisión final fue construir el proyecto paso a paso para que el código no se limitara a una respuesta generada automáticamente, sino que pudiera ser revisado y comprendido durante su implementación.
+
+---
+
+### 17 de julio de 2026 — Configuración y validación de parámetros UART
+
+#### Objetivo
+
+Crear una representación clara de la configuración UART y evitar que pudiera construirse un dispositivo con valores inválidos.
+
+#### Herramienta utilizada
+
+ChatGPT.
+
+#### Prompt utilizado
+
+> Ayúdame a crear el módulo de configuración del driver UART. Debe representar la paridad, los bits de parada y los demás parámetros necesarios. Quiero que la configuración sea inmutable y que valide sus datos desde el momento en que se crea.
+
+#### Propuesta de la IA
+
+La IA propuso utilizar enumeraciones para representar la paridad y los bits de parada. También sugirió utilizar una `dataclass` inmutable para agrupar los parámetros de configuración.
+
+La primera propuesta concentraba las validaciones dentro de un solo método. Posteriormente se sugirió separar las comprobaciones en métodos pequeños para que cada uno validara una condición concreta.
+
+#### Decisión tomada
+
+Se conservaron las enumeraciones porque limitan los valores posibles y evitan utilizar cadenas arbitrarias. También se aceptó el uso de una `dataclass` con `frozen=True` para impedir que una configuración válida cambie después de crear el dispositivo.
+
+Después de revisar la primera versión, se decidió dividir la validación en cuatro métodos auxiliares. Este cambio hizo que el código fuera más fácil de leer y permitió identificar con claridad qué condición produce cada excepción.
+
+#### Cambios realizados
+
+- Se creó `config.py`.
+- Se definió la enumeración `Parity`.
+- Se definió la enumeración `StopBits`.
+- Se creó la clase inmutable `UartConfig`.
+- Se incorporaron validaciones para impedir configuraciones UART inválidas.
+- Se dividió la lógica de validación en métodos con responsabilidades específicas.
+- Se agregaron pruebas para configuraciones válidas e inválidas.
+
+#### Justificación
+
+La IA ayudó a elegir estructuras adecuadas para representar valores limitados y datos de configuración. La propuesta fue revisada y refactorizada antes de considerarse terminada.
+
+El resultado evita que los errores de configuración lleguen a etapas posteriores del procesamiento. Esto simplifica el resto del driver porque los demás componentes pueden asumir que recibieron una configuración válida.
+
+---
+
+### 17 de julio de 2026 — Implementación de parsers para diferentes protocolos
+
+#### Objetivo
+
+Permitir que el driver procesara distintos tipos de mensajes sin incorporar la lógica de cada protocolo directamente dentro del dispositivo UART.
+
+#### Herramienta utilizada
+
+ChatGPT.
+
+#### Prompt utilizado
+
+> Necesito desarrollar los parsers del driver UART para Modbus RTU, NMEA GPGGA y una trama CAN simplificada. Explícame qué debe validar cada protocolo y ayúdame a implementar cada parser por separado para que pueda entender su funcionamiento.
+
+#### Propuesta de la IA
+
+La IA propuso que cada parser encapsulara las reglas de su propio protocolo:
+
+- Para Modbus RTU, comprobar la longitud de la trama y validar el CRC-16.
+- Para NMEA GPGGA, verificar el checksum XOR, separar los campos y convertir la latitud y longitud a grados decimales.
+- Para CAN simplificado, comprobar la cabecera, interpretar un identificador de 11 bits, leer el DLC y validar la longitud de los datos.
+
+La IA también explicó que el dispositivo no debía conocer los detalles de cada formato. Su responsabilidad sería recibir bytes y delegar su interpretación al parser configurado.
+
+#### Decisión tomada
+
+Se aceptó mantener los parsers separados porque los tres protocolos utilizan estructuras y mecanismos de validación diferentes.
+
+Se decidió implementar solamente las características solicitadas por la actividad. No se intentó construir una implementación completa de los estándares Modbus, NMEA o CAN, ya que eso habría aumentado innecesariamente el alcance.
+
+Cada algoritmo fue revisado de forma individual. En Modbus se estudió el desplazamiento de bits y el polinomio `0xA001`; en NMEA se revisó el cálculo XOR y la conversión de coordenadas; en CAN se comprobó que el identificador permaneciera dentro del rango correspondiente a 11 bits.
+
+#### Cambios realizados
+
+- Se creó `parsers.py`.
+- Se implementó el cálculo y la comprobación CRC-16 para Modbus RTU.
+- Se implementó la validación del checksum de sentencias NMEA GPGGA.
+- Se incorporó la conversión de coordenadas NMEA a grados decimales.
+- Se implementó el parser de una trama CAN simplificada.
+- Se agregaron validaciones para cabeceras, longitudes y contenido inválido.
+- Se crearon pruebas con tramas válidas y tramas alteradas.
+
+#### Justificación
+
+La IA permitió explicar algoritmos que no eran evidentes únicamente al observar el código, especialmente el CRC de Modbus y la representación de coordenadas NMEA.
+
+Las propuestas no se copiaron sin revisión. Se comprobó qué representaba cada byte y por qué una trama debía aceptarse o rechazarse. La separación de parsers permite ampliar el sistema con otros protocolos sin modificar la lógica principal del dispositivo.
+
+---
+
+### 17 de julio de 2026 — Dispositivo UART y almacenamiento de mensajes
+
+#### Objetivo
+
+Crear el componente encargado de representar el dispositivo UART, controlar su estado y procesar mensajes mediante el parser seleccionado.
+
+#### Herramienta utilizada
+
+ChatGPT.
+
+#### Prompt utilizado
+
+> Ayúdame a implementar el dispositivo UART utilizando la configuración y los parsers que ya desarrollamos. Debe poder conectarse, desconectarse y procesar datos. También necesito almacenar el resultado procesado sin mezclar esa responsabilidad con la interpretación del mensaje.
+
+#### Propuesta de la IA
+
+La IA propuso crear `UartDevice` con tres dependencias principales:
+
+- Una configuración UART.
+- Un parser encargado de interpretar los datos.
+- Un búfer opcional para almacenar los mensajes procesados.
+
+También sugirió separar el almacenamiento permanente en otro módulo mediante un grabador de registros JSON Lines.
+
+El método de procesamiento debía verificar primero el estado del dispositivo, delegar los bytes al parser y enviar el resultado al búfer cuando este estuviera configurado.
+
+#### Decisión tomada
+
+Se aceptó la inyección del parser porque permite que el mismo dispositivo funcione con diferentes protocolos. También se conservó el búfer como una dependencia opcional para poder utilizar el dispositivo sin obligarlo a almacenar todos los resultados.
+
+Se decidió que `UartDevice` no administrara archivos directamente. El almacenamiento persistente quedó en `recorder.py`, evitando mezclar la comunicación con las operaciones de escritura.
+
+#### Cambios realizados
+
+- Se creó `device.py`.
+- Se implementó la clase `UartDevice`.
+- Se agregaron las operaciones de conexión y desconexión.
+- Se incorporó la validación del estado antes de procesar un mensaje.
+- Se delegó la interpretación de los bytes al parser configurado.
+- Se permitió almacenar el resultado en un búfer opcional.
+- Se creó `recorder.py`.
+- Se implementó el almacenamiento mediante el formato JSON Lines.
+- Se comprobó que los objetos fueran serializables antes de escribirlos.
+- Se agregaron pruebas para el ciclo de conexión, procesamiento y almacenamiento.
+
+#### Justificación
+
+La propuesta permitió aplicar inversión de dependencias: el dispositivo utiliza abstracciones proporcionadas desde el exterior y no crea internamente un parser concreto.
+
+La revisión manual se concentró en verificar el flujo completo: el dispositivo recibe datos, comprueba su estado, solicita al parser que los interprete y entrega el resultado al componente correspondiente. Esta separación reduce el acoplamiento y facilita las pruebas.
+
+---
+
+### 17 de julio de 2026 — Búfer circular seguro para concurrencia
+
+#### Objetivo
+
+Agregar un mecanismo de almacenamiento temporal con capacidad limitada que pudiera utilizarse de manera segura cuando existieran accesos concurrentes.
+
+#### Herramienta utilizada
+
+ChatGPT.
+
+#### Prompt utilizado
+
+> Necesito implementar un búfer circular genérico para los mensajes procesados por el driver. Debe tener una capacidad máxima y ser seguro si distintas partes del programa intentan acceder al mismo tiempo. Explícame por qué se utilizan `deque`, los genéricos y un bloqueo.
+
+#### Propuesta de la IA
+
+La IA propuso implementar `ThreadSafeCircularBuffer` utilizando:
+
+- `Generic` y `TypeVar` para aceptar diferentes tipos de datos.
+- `deque` con una capacidad máxima para descartar automáticamente el elemento más antiguo cuando el búfer se llena.
+- `Lock` para proteger las operaciones que consultan o modifican la colección.
+
+También se propusieron operaciones para agregar elementos, consultar el contenido, obtener la cantidad almacenada y limpiar el búfer.
+
+#### Decisión tomada
+
+Se aceptó utilizar `deque` porque ya proporciona el comportamiento circular necesario y evita implementar manualmente índices de lectura y escritura.
+
+El uso de `Lock` se mantuvo porque varias operaciones sobre una colección compartida pueden interferir entre sí. Se revisó que el bloqueo protegiera únicamente las secciones necesarias para no conservarlo durante operaciones externas.
+
+#### Cambios realizados
+
+- Se creó `buffer.py`.
+- Se implementó `ThreadSafeCircularBuffer` como una clase genérica.
+- Se estableció una capacidad máxima.
+- Se incorporó un bloqueo para proteger el estado interno.
+- Se implementó el reemplazo del elemento más antiguo cuando se supera la capacidad.
+- Se agregaron pruebas para inserción, consulta, límite de capacidad y limpieza.
+
+#### Justificación
+
+La IA ayudó a explicar que “seguro para hilos” no significa únicamente utilizar un contenedor adecuado, sino proteger las operaciones compuestas que leen o modifican el estado compartido.
+
+La solución se mantuvo sencilla y utiliza componentes de la biblioteca estándar de Python. Esto permitió cumplir el requisito de concurrencia sin introducir dependencias adicionales.
+
+---
+
+### 17 de julio de 2026 — Registro estructurado en formato JSON
+
+#### Objetivo
+
+Generar registros legibles por programas y personas, incluyendo información suficiente para identificar cuándo ocurrió un evento y qué parte del sistema lo produjo.
+
+#### Herramienta utilizada
+
+ChatGPT.
+
+#### Prompt utilizado
+
+> Ayúdame a implementar un formatter de logging que produzca una línea JSON por evento. Necesito que incluya fecha y hora, nivel, nombre del logger y mensaje. También debe conservar correctamente caracteres Unicode.
+
+#### Propuesta de la IA
+
+La IA propuso crear `JsonFormatter` como una especialización de `logging.Formatter`. Cada registro debía convertirse en un diccionario y después serializarse como JSON.
+
+Los campos propuestos fueron:
+
+- `timestamp`, utilizando formato ISO 8601 y la indicación de UTC.
+- `level`, para representar el nivel del evento.
+- `logger`, para identificar el origen.
+- `event`, para almacenar el mensaje.
+
+También se sugirió configurar la serialización para conservar caracteres Unicode legibles.
+
+#### Decisión tomada
+
+Se aceptó el formato JSON porque facilita el procesamiento posterior de los registros y mantiene una estructura constante.
+
+Se decidió usar el nombre `event` para el mensaje principal y conservar los caracteres Unicode sin convertirlos en secuencias escapadas innecesarias. Después de generar el formatter, se revisó que cada línea pudiera interpretarse nuevamente como un objeto JSON válido.
+
+#### Cambios realizados
+
+- Se creó `json_logging.py`.
+- Se implementó `JsonFormatter`.
+- Se incorporó una marca de tiempo en formato ISO 8601.
+- Se agregaron los campos de nivel, logger y evento.
+- Se mantuvo la representación legible de caracteres Unicode.
+- Se agregaron pruebas para comprobar la estructura y el contenido de los registros.
+
+#### Justificación
+
+La IA se utilizó para proponer una estructura consistente y compatible con el módulo `logging` de Python. La revisión manual permitió comprobar que el resultado no fuera solamente una cadena con apariencia de JSON, sino un objeto que pudiera deserializarse correctamente.
+
+Este componente se mantuvo separado de `recorder.py` porque ambos trabajan con JSON, pero tienen responsabilidades diferentes: uno almacena datos y el otro define el formato de los eventos del sistema.
+
+---
+
+### 17 de julio de 2026 — Revisión del código y pruebas finales con Codex
+
+##### Objetivo
+
+Utilizar Codex para revisar la etapa final del driver y completar exclusivamente las pruebas relacionadas con el dispositivo y el registro estructurado, sin modificar el código de producción que ya se encontraba funcionando.
+
+##### Herramienta utilizada
+
+Codex.
+
+##### Prompt utilizado
+
+> Revisa la implementación actual del driver UART y completa exclusivamente el archivo `test_device_logging.py`. Agrega las pruebas necesarias para comprobar el comportamiento de `UartDevice` y `JsonFormatter`. No modifiques los archivos de producción ni realices cambios fuera del alcance solicitado.
+
+##### Propuesta de la IA
+
+Codex propuso completar `test_device_logging.py` con casos orientados a comprobar:
+
+- El estado de conexión y desconexión del dispositivo.
+- El procesamiento de datos mediante el parser configurado.
+- El envío del resultado al búfer cuando existe uno.
+- La generación de registros JSON con los campos esperados.
+
+Durante la revisión también se identificaron anotaciones que Pylance consideraba incompatibles dentro del archivo de pruebas.
+
+##### Decisión tomada
+
+La propuesta se revisó antes de integrarla. Se confirmó que Codex hubiera trabajado solamente sobre el archivo solicitado y que no reemplazara la implementación construida durante las etapas anteriores.
+
+Inicialmente se consideró ocultar algunas advertencias mediante comentarios de supresión de tipos. Esa opción se descartó porque solamente ocultaba el problema. Se prefirió corregir las anotaciones y los objetos auxiliares utilizados por las pruebas.
+
+##### Cambios realizados
+
+- Se completó `test_device_logging.py`.
+- Se verificó el ciclo de conexión y desconexión.
+- Se comprobó el procesamiento mediante una dependencia controlada.
+- Se validó la integración entre el dispositivo y el búfer.
+- Se comprobó que los eventos generados fueran JSON válido.
+- Se corrigieron las anotaciones del archivo de pruebas sin utilizar comentarios para ignorar errores.
+- Se ejecutó nuevamente la suite completa y todas las pruebas finalizaron correctamente.
+- Se confirmó que Pylance no mostrara advertencias en los archivos revisados.
+
+##### Justificación
+
+Codex se utilizó como una segunda revisión del trabajo y no como sustituto del proceso de desarrollo. Limitar su alcance a un archivo permitió comparar su propuesta con el comportamiento que ya se había definido.
+
+La revisión final ayudó a identificar casos que debían comprobarse y problemas de tipado presentes únicamente en las pruebas. Cada cambio fue revisado antes de conservarlo y posteriormente se ejecutaron nuevamente todas las pruebas para confirmar que el driver siguiera funcionando como un conjunto.
+
+---
+
+##### Reflexión sobre el uso de inteligencia artificial
+
+La inteligencia artificial se utilizó durante el desarrollo del driver UART para comprender los requisitos, dividir el problema, proponer estructuras, explicar algoritmos y complementar las pruebas.
+
+El proceso no consistió en solicitar el proyecto completo y copiar el resultado. Primero se analizó la actividad y después se desarrolló cada módulo por separado. Las propuestas de la IA fueron revisadas, ejecutadas y, cuando fue necesario, modificadas.
+
+Los principales usos de la IA fueron:
+
+- Convertir los requisitos de la actividad en componentes concretos.
+- Explicar conceptos como CRC-16, checksum XOR, coordenadas NMEA, genéricos y bloqueos.
+- Proponer estructuras compatibles con los principios SOLID.
+- Identificar validaciones y casos de prueba.
+- Revisar la integración final sin modificar componentes fuera del alcance solicitado.
+
+La decisión sobre qué propuestas conservar permaneció bajo revisión humana. Algunas soluciones se refactorizaron para mejorar su claridad y otras se descartaron cuando únicamente ocultaban una advertencia sin resolver su causa.
+
+Como resultado, el driver quedó dividido en componentes con responsabilidades específicas y acompañado de pruebas automatizadas. El uso de la IA también permitió identificar qué partes todavía necesitan mayor estudio, especialmente el funcionamiento interno de UART y los protocolos procesados.
