@@ -22,3 +22,9 @@ def test_register_duplicate_sensor_raises() -> None:
 
     with pytest.raises(ValueError, match="ya está registrado."):
         registry.register("SENSOR-01")
+
+def test_register_empty_sensor_id_raises() -> None:
+    registry = SensorRegistry()
+
+    with pytest.raises(ValueError, match="no puede estar vacío."):
+        registry.register("")
