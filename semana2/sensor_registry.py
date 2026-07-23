@@ -5,5 +5,14 @@ class SensorNotFoundError(LookupError):
 class SensorRegistry:
     """Administra los sensores registrados."""
 
-    def get(self, sensor_id: str) -> object:
-        raise SensorNotFoundError(sensor_id)
+    def __init__(self) -> None:
+        self._sensors: set[str] = set()
+
+    def register(self, sensor_id: str) -> None:
+        self._sensors.add(sensor_id)
+
+    def get(self, sensor_id: str) -> str:
+        if sensor_id not in self._sensors:
+            raise SensorNotFoundError(sensor_id)
+
+        return sensor_id
