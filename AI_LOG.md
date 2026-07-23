@@ -765,3 +765,110 @@ Los principales usos de la IA fueron:
 La decisión sobre qué propuestas conservar permaneció bajo revisión humana. Algunas soluciones se refactorizaron para mejorar su claridad y otras se descartaron cuando únicamente ocultaban una advertencia sin resolver su causa.
 
 Como resultado, el driver quedó dividido en componentes con responsabilidades específicas y acompañado de pruebas automatizadas. El uso de la IA también permitió identificar qué partes todavía necesitan mayor estudio, especialmente el funcionamiento interno de UART y los protocolos procesados.
+
+## Entrada: Elaboración y revisión del backlog del sistema de monitoreo ambiental
+
+### Objetivo
+
+Construir un backlog para un sistema de monitoreo ambiental en una bodega industrial, utilizando historias de usuario, prioridades MoSCoW, estimaciones mediante story points y escenarios escritos con la estructura Given-When-Then.
+
+### Herramienta utilizada
+
+ChatGPT.
+
+### Prompt utilizado
+
+> Ayúdame a construir y revisar las historias de usuario del sistema de monitoreo ambiental. Para cada historia analiza si el objetivo es claro, si puede verificarse, si existe alguna ambigüedad y qué caso borde relevante podría faltar. Antes de aprobar cada historia, quiero revisar críticamente su alcance, prioridad, estimación y escenarios.
+
+### Propuesta de la IA
+
+La IA propuso construir el backlog de manera progresiva, revisando cada historia antes de continuar con la siguiente. Para cada una presentó:
+
+- El rol del usuario.
+- La necesidad que debía atender.
+- El valor aportado al sistema.
+- La prioridad MoSCoW.
+- Una estimación mediante story points.
+- Escenarios principales, alternativos y de error.
+
+Durante el proceso también señaló ambigüedades y casos borde. Entre ellos se encontraron los valores iguales al umbral, lecturas inválidas, sensores inexistentes, alertas consolidadas, archivos dañados, filtros incorrectos, ausencia de resultados y recuperación de sensores inactivos.
+
+A partir de esta revisión se definieron doce historias relacionadas con el registro de sensores y lecturas, validación de datos, configuración de umbrales, detección de anomalías, generación y almacenamiento de alertas, consulta y filtrado del historial, generación de estadísticas, supervisión de sensores inactivos y exportación de reportes.
+
+### Decisión tomada
+
+No se aceptaron automáticamente las historias propuestas. Cada una fue revisada antes de aprobarla y, cuando existieron dudas, se solicitaron aclaraciones o modificaciones.
+
+Se decidió conservar doce historias porque representan capacidades diferentes del sistema. También se establecieron reglas generales para evitar repetir en cada historia comportamientos como la conservación de alertas consolidadas, el uso de los umbrales vigentes y la obligación de no modificar el historial durante una consulta.
+
+### Cambios realizados
+
+- Se elaboraron doce historias de usuario.
+- Se asignó una prioridad MoSCoW a cada historia.
+- Se estimaron las historias con un total de 50 story points.
+- Se utilizaron escenarios Given-When-Then para hacer verificables los comportamientos.
+- Se definieron reglas generales aplicables a todo el backlog.
+- Se aclaró que una variable solamente es anómala cuando supera su umbral.
+- Se estableció que una lectura puede producir como máximo una alerta consolidada.
+- Se diferenció una anomalía ambiental de un aviso por inactividad.
+- Se relacionaron las historias de consulta, filtrado, estadísticas y exportación.
+
+### Justificación
+
+El uso de la IA permitió contrastar las historias desde diferentes perspectivas y encontrar condiciones que inicialmente no se habían considerado. Sin embargo, las decisiones finales se tomaron después de analizar si cada comportamiento era necesario, comprensible y coherente con el alcance del sistema.
+
+La intención no fue aceptar una especificación generada automáticamente, sino utilizar la IA como apoyo para cuestionar el backlog y mejorar su verificabilidad antes de considerarlo terminado.
+
+---
+
+## Entrada: Simplificación y depuración del backlog
+
+### Objetivo
+
+Reducir el tamaño del backlog original, eliminar contenido redundante y conservar solamente los escenarios necesarios para explicar y comprobar el comportamiento esperado del sistema.
+
+### Herramienta utilizada
+
+ChatGPT.
+
+### Prompt utilizado
+
+> Revisa detalladamente todas las historias porque el backlog tiene aproximadamente 800 líneas y demasiados escenarios específicos. Analiza nuevamente si cada escenario es verificable, ambiguo o si realmente representa un caso borde importante. Identifica redundancias y reduce correctamente el contenido sin dejar de cumplir con la actividad.
+
+### Propuesta de la IA
+
+La IA realizó una revisión global del backlog y detectó que la cantidad de texto no se debía únicamente al número de historias. También encontró que la `US-09` estaba duplicada y que varias reglas se comprobaban repetidamente mediante escenarios separados.
+
+Entre las principales repeticiones se encontraban:
+
+- La indicación de no modificar el historial.
+- La separación de escenarios equivalentes para temperatura y humedad.
+- La conservación de alertas consolidadas.
+- Las consultas sobre archivos inexistentes o sin información.
+- Las combinaciones individuales de filtros.
+- La comprobación repetida de reglas que ya podían establecerse de manera general.
+
+La propuesta consistió en mantener las doce historias, pero limitar cada una a un flujo principal, un caso alternativo importante y, cuando fuera necesario, un error o caso borde que modificara realmente el comportamiento.
+
+### Decisión tomada
+
+Se aceptó simplificar el backlog porque la primera versión era demasiado extensa para explicarla y defenderla con claridad. No se crearon historias adicionales, ya que esto habría fragmentado nuevamente funcionalidades que pertenecían al mismo objetivo.
+
+Se decidió conservar los casos borde que sí afectan el funcionamiento, como los datos inválidos, valores iguales al umbral, sensores inexistentes, registros dañados, filtros incorrectos, sensores que recuperan la comunicación y errores de almacenamiento o exportación.
+
+### Cambios realizados
+
+- Se eliminó la copia duplicada de la `US-09`.
+- Se redujo el backlog de 802 a 341 líneas.
+- Se pasó de 80 a 31 escenarios.
+- Se conservaron las doce historias de usuario.
+- Se agruparon comportamientos equivalentes en escenarios más generales.
+- Se trasladaron las decisiones transversales a una sección de reglas generales.
+- Se eliminaron comprobaciones repetidas que no aportaban un comportamiento diferente.
+- Se mantuvieron los escenarios necesarios para verificar los flujos principales y los errores relevantes.
+
+### Justificación
+
+La primera versión era verificable, pero estaba sobredocumentada y se aproximaba más a una especificación técnica exhaustiva que a un backlog académico. Esto dificultaba su lectura y podía provocar que su contenido fuera complicado de explicar.
+
+La versión revisada conserva el alcance funcional y los casos importantes, pero utiliza una redacción más concreta y natural. La IA ayudó a localizar las redundancias, mientras que la decisión de reducir el contenido surgió de una revisión crítica del resultado y de la necesidad de presentar un trabajo que pudiera comprenderse y defenderse personalmente.
