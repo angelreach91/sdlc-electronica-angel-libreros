@@ -766,21 +766,21 @@ La decisión sobre qué propuestas conservar permaneció bajo revisión humana. 
 
 Como resultado, el driver quedó dividido en componentes con responsabilidades específicas y acompañado de pruebas automatizadas. El uso de la IA también permitió identificar qué partes todavía necesitan mayor estudio, especialmente el funcionamiento interno de UART y los protocolos procesados.
 
-## Entrada: Elaboración y revisión del backlog del sistema de monitoreo ambiental
+### Entrada: Elaboración y revisión del backlog del sistema de monitoreo ambiental
 
-### Objetivo
+#### Objetivo
 
 Construir un backlog para un sistema de monitoreo ambiental en una bodega industrial, utilizando historias de usuario, prioridades MoSCoW, estimaciones mediante story points y escenarios escritos con la estructura Given-When-Then.
 
-### Herramienta utilizada
+#### Herramienta utilizada
 
 ChatGPT.
 
-### Prompt utilizado
+#### Prompt utilizado
 
 > Ayúdame a construir y revisar las historias de usuario del sistema de monitoreo ambiental. Para cada historia analiza si el objetivo es claro, si puede verificarse, si existe alguna ambigüedad y qué caso borde relevante podría faltar. Antes de aprobar cada historia, quiero revisar críticamente su alcance, prioridad, estimación y escenarios.
 
-### Propuesta de la IA
+#### Propuesta de la IA
 
 La IA propuso construir el backlog de manera progresiva, revisando cada historia antes de continuar con la siguiente. Para cada una presentó:
 
@@ -795,13 +795,13 @@ Durante el proceso también señaló ambigüedades y casos borde. Entre ellos se
 
 A partir de esta revisión se definieron doce historias relacionadas con el registro de sensores y lecturas, validación de datos, configuración de umbrales, detección de anomalías, generación y almacenamiento de alertas, consulta y filtrado del historial, generación de estadísticas, supervisión de sensores inactivos y exportación de reportes.
 
-### Decisión tomada
+#### Decisión tomada
 
 No se aceptaron automáticamente las historias propuestas. Cada una fue revisada antes de aprobarla y, cuando existieron dudas, se solicitaron aclaraciones o modificaciones.
 
 Se decidió conservar doce historias porque representan capacidades diferentes del sistema. También se establecieron reglas generales para evitar repetir en cada historia comportamientos como la conservación de alertas consolidadas, el uso de los umbrales vigentes y la obligación de no modificar el historial durante una consulta.
 
-### Cambios realizados
+#### Cambios realizados
 
 - Se elaboraron doce historias de usuario.
 - Se asignó una prioridad MoSCoW a cada historia.
@@ -813,7 +813,7 @@ Se decidió conservar doce historias porque representan capacidades diferentes d
 - Se diferenció una anomalía ambiental de un aviso por inactividad.
 - Se relacionaron las historias de consulta, filtrado, estadísticas y exportación.
 
-### Justificación
+#### Justificación
 
 El uso de la IA permitió contrastar las historias desde diferentes perspectivas y encontrar condiciones que inicialmente no se habían considerado. Sin embargo, las decisiones finales se tomaron después de analizar si cada comportamiento era necesario, comprensible y coherente con el alcance del sistema.
 
@@ -821,21 +821,21 @@ La intención no fue aceptar una especificación generada automáticamente, sino
 
 ---
 
-## Entrada: Simplificación y depuración del backlog
+### Entrada: Simplificación y depuración del backlog
 
-### Objetivo
+#### Objetivo
 
 Reducir el tamaño del backlog original, eliminar contenido redundante y conservar solamente los escenarios necesarios para explicar y comprobar el comportamiento esperado del sistema.
 
-### Herramienta utilizada
+#### Herramienta utilizada
 
 ChatGPT.
 
-### Prompt utilizado
+#### Prompt utilizado
 
 > Revisa detalladamente todas las historias porque el backlog tiene aproximadamente 800 líneas y demasiados escenarios específicos. Analiza nuevamente si cada escenario es verificable, ambiguo o si realmente representa un caso borde importante. Identifica redundancias y reduce correctamente el contenido sin dejar de cumplir con la actividad.
 
-### Propuesta de la IA
+#### Propuesta de la IA
 
 La IA realizó una revisión global del backlog y detectó que la cantidad de texto no se debía únicamente al número de historias. También encontró que la `US-09` estaba duplicada y que varias reglas se comprobaban repetidamente mediante escenarios separados.
 
@@ -850,13 +850,13 @@ Entre las principales repeticiones se encontraban:
 
 La propuesta consistió en mantener las doce historias, pero limitar cada una a un flujo principal, un caso alternativo importante y, cuando fuera necesario, un error o caso borde que modificara realmente el comportamiento.
 
-### Decisión tomada
+#### Decisión tomada
 
 Se aceptó simplificar el backlog porque la primera versión era demasiado extensa para explicarla y defenderla con claridad. No se crearon historias adicionales, ya que esto habría fragmentado nuevamente funcionalidades que pertenecían al mismo objetivo.
 
 Se decidió conservar los casos borde que sí afectan el funcionamiento, como los datos inválidos, valores iguales al umbral, sensores inexistentes, registros dañados, filtros incorrectos, sensores que recuperan la comunicación y errores de almacenamiento o exportación.
 
-### Cambios realizados
+#### Cambios realizados
 
 - Se eliminó la copia duplicada de la `US-09`.
 - Se redujo el backlog de 802 a 341 líneas.
@@ -867,8 +867,66 @@ Se decidió conservar los casos borde que sí afectan el funcionamiento, como lo
 - Se eliminaron comprobaciones repetidas que no aportaban un comportamiento diferente.
 - Se mantuvieron los escenarios necesarios para verificar los flujos principales y los errores relevantes.
 
-### Justificación
+#### Justificación
 
 La primera versión era verificable, pero estaba sobredocumentada y se aproximaba más a una especificación técnica exhaustiva que a un backlog académico. Esto dificultaba su lectura y podía provocar que su contenido fuera complicado de explicar.
 
 La versión revisada conserva el alcance funcional y los casos importantes, pero utiliza una redacción más concreta y natural. La IA ayudó a localizar las redundancias, mientras que la decisión de reducir el contenido surgió de una revisión crítica del resultado y de la necesidad de presentar un trabajo que pudiera comprenderse y defenderse personalmente.
+
+### Entrada: Desarrollo de `SensorRegistry` mediante TDD
+
+#### Objetivo
+
+Desarrollar la funcionalidad correspondiente a la historia de usuario `US-01`, relacionada con el registro y la consulta de sensores. El trabajo debía realizarse mediante ciclos pequeños de desarrollo dirigido por pruebas, siguiendo la secuencia RED, GREEN y REFACTOR.
+
+#### Herramienta utilizada
+
+Codex.
+
+#### Prompts utilizados
+
+> Guíame paso a paso para implementar `SensorRegistry` mediante TDD, realizando primero la prueba RED y después la implementación mínima en GREEN.
+
+> ¿Cómo quedaría todo el código de momento?
+
+> Explica todo el código paso a paso.
+
+> Quiero realizar un refactor que quede registrado correctamente en el historial de commits.
+
+#### Propuesta de la IA
+
+Codex propuso dividir la historia de usuario en comportamientos pequeños que pudieran desarrollarse y comprobarse individualmente:
+
+1. Generar un error al consultar un sensor inexistente.
+2. Registrar un sensor y recuperarlo mediante su identificador.
+3. Rechazar identificadores duplicados.
+4. Rechazar identificadores vacíos.
+5. Rechazar identificadores formados únicamente por espacios.
+
+Para cada comportamiento se creó primero una prueba que fallaba, representando la fase RED. Después se agregó únicamente el código necesario para que la prueba pasara, correspondiente a la fase GREEN.
+
+Finalmente, Codex propuso refactorizar el método `register()` separando sus validaciones en los métodos auxiliares `_validate_sensor_id()` y `_ensure_not_registered()`. Esta reorganización permitió que el método principal expresara con mayor claridad el proceso de validar, comprobar duplicados y registrar el sensor.
+
+#### Decisión tomada
+
+Se decidió conservar los cinco comportamientos propuestos porque todos se relacionan directamente con la responsabilidad de registrar sensores de forma válida.
+
+También se aceptó el refactor porque no añadió nuevas funcionalidades ni modificó los resultados de las pruebas. Su propósito fue mejorar la organización y legibilidad del código.
+
+Durante el desarrollo fue necesario corregir el orden de los últimos commits, ya que inicialmente el cambio que rechazaba identificadores con espacios había quedado incluido dentro del commit de refactor. Como los commits todavía no se habían publicado, se retiró únicamente el último commit conservando los cambios locales. Después se registraron por separado el GREEN y el REFACTOR.
+
+#### Cambios realizados
+
+Se creó la excepción personalizada `SensorNotFoundError`, utilizada cuando se intenta consultar un sensor que no está registrado.
+
+La clase `SensorRegistry` utiliza un conjunto de cadenas para almacenar identificadores sin permitir elementos repetidos. Su método `register()` valida el identificador, comprueba que no exista previamente y finalmente lo agrega al registro. El método `get()` devuelve el identificador cuando existe o genera `SensorNotFoundError` cuando no se encuentra.
+
+Se desarrollaron cinco pruebas para comprobar el comportamiento del registro. Todas fueron creadas de manera incremental y actualmente pasan correctamente.
+
+El historial final conserva la evidencia del ciclo RED y GREEN de cada comportamiento, seguido por un commit de REFACTOR para la reorganización de las validaciones.
+
+#### Justificación
+
+La IA se utilizó como apoyo para dividir la historia de usuario, proponer las pruebas, explicar los errores obtenidos y mantener el orden del proceso TDD. Las propuestas no se incorporaron de manera automática: cada prueba se ejecutó y su resultado se revisó antes de continuar.
+
+Además, se solicitó una explicación completa de la implementación para comprender el funcionamiento del conjunto, las excepciones, los métodos auxiliares, las anotaciones de tipo y las pruebas con `pytest`. Esto permitió verificar que el resultado respondiera a la historia de usuario y que el refactor modificara únicamente la estructura interna.
