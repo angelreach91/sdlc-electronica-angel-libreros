@@ -9,6 +9,9 @@ class SensorRegistry:
         self._sensors: set[str] = set()
 
     def register(self, sensor_id: str) -> None:
+        if not sensor_id:
+            raise ValueError("El identificador no puede estar vacío.")
+
         if sensor_id in self._sensors:
             raise ValueError(f"El sensor '{sensor_id}' ya está registrado.")
 
