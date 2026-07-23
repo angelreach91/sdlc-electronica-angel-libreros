@@ -29,7 +29,7 @@ El driver permite trabajar con los siguientes protocolos:
 - `recorder.py`: almacenamiento de mensajes en formato JSON Lines.
 - `json_logging.py`: generación de registros estructurados en formato JSON.
 
-## Reflexión sobre los principios SOLID
+<!-- ## Reflexión sobre los principios SOLID -->
 
 El desarrollo del driver permitió aplicar los principios SOLID estudiados durante la semana.
 
