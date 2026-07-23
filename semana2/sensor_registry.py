@@ -9,12 +9,8 @@ class SensorRegistry:
         self._sensors: set[str] = set()
 
     def register(self, sensor_id: str) -> None:
-        if not sensor_id.strip():
-            raise ValueError("El identificador no puede estar vacío.")
-
-        if sensor_id in self._sensors:
-            raise ValueError(f"El sensor '{sensor_id}' ya está registrado.")
-
+        self._validate_sensor_id(sensor_id)
+        self._ensure_not_registered(sensor_id)
         self._sensors.add(sensor_id)
 
     def get(self, sensor_id: str) -> str:
@@ -22,3 +18,12 @@ class SensorRegistry:
             raise SensorNotFoundError(sensor_id)
 
         return sensor_id
+
+    @staticmethod
+    def _validate_sensor_id(sensor_id: str) -> None:
+        if not sensor_id.strip():
+            raise ValueError("El identificador no puede estar vacío.")
+
+    def _ensure_not_registered(self, sensor_id: str) -> None:
+        if sensor_id in self._sensors:
+            raise ValueError(f"El sensor '{sensor_id}' ya está registrado.")
