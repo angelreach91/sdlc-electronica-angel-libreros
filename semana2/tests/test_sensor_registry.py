@@ -15,3 +15,10 @@ def test_register_and_get_sensor() -> None:
     registry.register("SENSOR-01")
 
     assert registry.get("SENSOR-01") == "SENSOR-01"
+
+def test_register_duplicate_sensor_raises() -> None:
+    registry = SensorRegistry()
+    registry.register("SENSOR-01")
+
+    with pytest.raises(ValueError, match="ya está registrado."):
+        registry.register("SENSOR-01")
