@@ -8,3 +8,10 @@ def test_get_unknown_sensor_raises() -> None:
 
     with pytest.raises(SensorNotFoundError):
         registry.get("GHOST-99")
+
+def test_register_and_get_sensor() -> None:
+    registry = SensorRegistry()
+
+    registry.register("SENSOR-01")
+
+    assert registry.get("SENSOR-01") == "SENSOR-01"
