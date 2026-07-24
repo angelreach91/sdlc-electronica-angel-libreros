@@ -11,7 +11,7 @@ class InvalidReadingError(ValueError):
 
 @dataclass(frozen=True)
 class SensorReading:
-    """Representa una lectura ambiental recibida desde un sensor."""
+    """Representa una lectura recibida desde un sensor."""
 
     sensor_id: str
     temperature: float
@@ -30,6 +30,29 @@ class ReadingRecorder:
         self._registry = registry
         self._clock = clock
         self._readings: list[SensorReading] = []
+
+    @staticmethod
+    def _require_numeric(value: object) -> int | float:
+        if isinstance(value, bool) or not isinstance(value, (int, float)):
+            raise InvalidReadingError(
+                "La temperatura y la humedad deben ser valores numéricos."
+            )
+
+        return value
+
+    @classmethod
+    def _validate_values(
+        cls,
+        temperature: object,
+        humidity: object,
+    ) -> None:
+        cls._require_numeric(temperature)
+        numeric_humidity = cls._require_numeric(humidity)
+
+        if not 0.0 <= numeric_humidity <= 100.0:
+            raise InvalidReadingError(
+                "La humedad debe encontrarse entre 0 y 100."
+            )
 
     def record(
         self,
@@ -52,20 +75,3 @@ class ReadingRecorder:
 
     def get_all(self) -> tuple[SensorReading, ...]:
         return tuple(self._readings)
-
-    @staticmethod
-    def _validate_values(temperature: object, humidity: object) -> None:
-        if (
-            isinstance(temperature, bool)
-            or not isinstance(temperature, (int, float))
-            or isinstance(humidity, bool)
-            or not isinstance(humidity, (int, float))
-        ):
-            raise InvalidReadingError(
-                "La temperatura y la humedad deben ser valores numéricos."
-            )
-
-        if not 0.0 <= humidity <= 100.0:
-            raise InvalidReadingError(
-                "La humedad debe encontrarse entre 0 y 100."
-            )
