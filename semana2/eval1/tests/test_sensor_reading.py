@@ -1,8 +1,10 @@
 from datetime import datetime, timezone
+from typing import cast
 
 import pytest
 
 from semana2.eval1.readings import (
+    InvalidReadingError,
     ReadingRecorder,
     SensorReading,
 )
@@ -53,3 +55,81 @@ def test_record_reading_from_unknown_sensor_raises() -> None:
         recorder.record("SENSOR-99", 24.5, 60.0)
 
     assert recorder.get_all() == ()
+
+@pytest.mark.parametrize(
+    ("temperature", "humidity"),
+    [
+        (None, 60.0),
+        (24.5, None),
+    ],
+)
+def test_record_reading_rejects_incomplete_data(
+    temperature: object,
+    humidity: object,
+) -> None:
+    registry = SensorRegistry()
+    registry.register("SENSOR-01")
+    reception_time = datetime(2026, 7, 23, 20, 30, tzinfo=timezone.utc)
+    recorder = ReadingRecorder(registry, clock=lambda: reception_time)
+
+    with pytest.raises(InvalidReadingError):
+        recorder.record(
+            "SENSOR-01",
+            cast(float, temperature),
+            cast(float, humidity),
+        )
+
+    assert recorder.get_all() == ()
+
+
+@pytest.mark.parametrize(
+    ("temperature", "humidity"),
+    [
+        ("temperatura-invalida", 60.0),
+        (24.5, "humedad-invalida"),
+    ],
+)
+def test_record_reading_rejects_non_numeric_data(
+    temperature: object,
+    humidity: object,
+) -> None:
+    registry = SensorRegistry()
+    registry.register("SENSOR-01")
+    reception_time = datetime(2026, 7, 23, 20, 30, tzinfo=timezone.utc)
+    recorder = ReadingRecorder(registry, clock=lambda: reception_time)
+
+    with pytest.raises(InvalidReadingError):
+        recorder.record(
+            "SENSOR-01",
+            cast(float, temperature),
+            cast(float, humidity),
+        )
+
+    assert recorder.get_all() == ()
+
+
+@pytest.mark.parametrize("humidity", [-0.1, 100.1])
+def test_record_reading_rejects_humidity_outside_valid_range(
+    humidity: float,
+) -> None:
+    registry = SensorRegistry()
+    registry.register("SENSOR-01")
+    reception_time = datetime(2026, 7, 23, 20, 30, tzinfo=timezone.utc)
+    recorder = ReadingRecorder(registry, clock=lambda: reception_time)
+
+    with pytest.raises(InvalidReadingError):
+        recorder.record("SENSOR-01", 24.5, humidity)
+
+    assert recorder.get_all() == ()
+
+
+def test_record_reading_accepts_humidity_range_boundaries() -> None:
+    registry = SensorRegistry()
+    registry.register("SENSOR-01")
+    reception_time = datetime(2026, 7, 23, 20, 30, tzinfo=timezone.utc)
+    recorder = ReadingRecorder(registry, clock=lambda: reception_time)
+
+    first_reading = recorder.record("SENSOR-01", 24.5, 0.0)
+    second_reading = recorder.record("SENSOR-01", 24.5, 100.0)
+
+    assert recorder.get_all() == (first_reading, second_reading)
