@@ -930,3 +930,53 @@ El historial final conserva la evidencia del ciclo RED y GREEN de cada comportam
 La IA se utilizó como apoyo para dividir la historia de usuario, proponer las pruebas, explicar los errores obtenidos y mantener el orden del proceso TDD. Las propuestas no se incorporaron de manera automática: cada prueba se ejecutó y su resultado se revisó antes de continuar.
 
 Además, se solicitó una explicación completa de la implementación para comprender el funcionamiento del conjunto, las excepciones, los métodos auxiliares, las anotaciones de tipo y las pruebas con `pytest`. Esto permitió verificar que el resultado respondiera a la historia de usuario y que el refactor modificara únicamente la estructura interna.
+
+## Configuración de la Definition of Done y calidad automatizada
+
+### Objetivo
+
+Establecer los criterios que debe cumplir una historia de usuario para considerarse terminada y configurar las comprobaciones automáticas de calidad solicitadas para la Semana 2.
+
+### Herramienta utilizada
+
+ChatGPT.
+
+### Prompt utilizado
+
+> Necesito realizar la actividad del jueves de la Semana 2. Ayúdame a crear una Definition of Done para el proyecto, configurar las herramientas de calidad automatizada y aplicar correctamente el flujo de ramas y Pull Requests. Explícame cada paso para comprender qué estamos haciendo y cómo se relaciona con Scrum.
+
+### Propuesta de la IA
+
+La IA propuso crear el archivo `semana2/DEFINITION_OF_DONE.md` con criterios funcionales, prácticas de TDD, comprobaciones de calidad, documentación, revisión y control de versiones. También sugirió centralizar la configuración del proyecto mediante `pyproject.toml`, estableciendo una cobertura mínima del 80 %, reglas de análisis para el código y la exigencia de anotaciones de tipo.
+
+Durante la comprobación del proyecto, la IA ayudó a interpretar un error provocado porque Mypy reconocía `sensor_registry.py` con dos nombres de módulo diferentes. Antes de proponer una modificación, solicitó revisar la estructura del directorio y los imports utilizados en las pruebas. Con esa información se determinó que no era necesario agregar un archivo `__init__.py` y que la solución adecuada era configurar `explicit_package_bases = true`.
+
+También se propuso realizar el trabajo en la rama `chore/calidad-automatizada-semana2`, revisar los cambios antes de confirmarlos y utilizar posteriormente un Pull Request como espacio de auto-revisión antes de fusionar la rama con `main`.
+
+### Decisión tomada
+
+Se aceptó la estructura propuesta para la Definition of Done porque reúne los requisitos de la actividad y establece criterios claros para determinar cuándo una historia puede pasar a `Done`.
+
+También se aceptó utilizar `pyproject.toml` para centralizar las comprobaciones automáticas. La corrección propuesta para Mypy se aplicó después de revisar la estructura real del proyecto y confirmar que era compatible con la forma en que se importan los módulos.
+
+Las recomendaciones no se aplicaron automáticamente: cada archivo, comando y resultado se revisó para comprender su finalidad antes de continuar.
+
+### Cambios realizados
+
+- Se creó `semana2/DEFINITION_OF_DONE.md`.
+- Se creó y configuró `pyproject.toml`.
+- Se estableció una cobertura mínima del 80 %.
+- Se configuraron las reglas de calidad requeridas para el proyecto.
+- Se activó la comprobación de anotaciones de tipo.
+- Se agregó `explicit_package_bases = true` para evitar la identificación duplicada de módulos.
+- Se ejecutaron cinco pruebas, todas aprobadas.
+- Se obtuvo una cobertura total del 100 %.
+- Se comprobó que el análisis de estilo y tipado terminara sin errores.
+- Se revisó el `diff` antes de crear el commit.
+- Se registraron los cambios en una rama independiente.
+
+### Justificación
+
+La IA se utilizó como apoyo para interpretar los requisitos, proponer una configuración inicial y diagnosticar el problema encontrado durante las comprobaciones. La revisión de la estructura, los imports y los resultados permitió comprender las propuestas antes de incorporarlas.
+
+La Definition of Done documenta el nivel de calidad que deberán cumplir las siguientes historias, mientras que la configuración automatizada permite verificar objetivamente parte de esos criterios. Esto evita considerar terminada una funcionalidad únicamente porque el código parece funcionar.
