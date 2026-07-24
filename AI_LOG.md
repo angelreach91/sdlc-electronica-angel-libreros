@@ -1167,3 +1167,63 @@ Al finalizar, las quince pruebas de la Semana 2 continuaron pasando y las compro
 #### Justificación
 
 El uso de TDD permitió definir primero el comportamiento esperado, implementar solamente lo necesario y mejorar posteriormente la estructura interna sin alterar los resultados. La propuesta de la IA no se incorporó automáticamente: se revisaron las pruebas, el código y el diff para mantener el alcance limitado a `US-03`.
+
+### Entrada — Desarrollo de US-04 mediante TDD
+
+#### Objetivo
+
+Desarrollar la configuración de los umbrales máximos de temperatura y humedad mediante el ciclo TDD: RED, GREEN y REFACTOR. El sistema debía utilizar valores predeterminados de `35 °C` y `80 %`, permitir su actualización con valores válidos y conservar la configuración anterior cuando se intentaran guardar datos inválidos.
+
+#### Herramienta utilizada
+
+ChatGPT.
+
+#### Prompt utilizado
+
+> Ayúdame a desarrollar US-04 mediante TDD. Necesito crear primero las pruebas para los umbrales predeterminados, la configuración de valores personalizados y el rechazo de valores no numéricos o humedades fuera del intervalo de 0 a 100. Después, propón la implementación mínima y un refactor que mejore el código sin modificar su comportamiento.
+
+#### Propuesta de la IA
+
+La IA propuso desarrollar la historia de usuario siguiendo las tres fases de TDD:
+
+**RED:** se creó `test_anomaly_thresholds.py` con pruebas para comprobar:
+
+- El uso de los umbrales predeterminados de `35 °C` y `80 %`.
+- La actualización de los umbrales mediante valores personalizados válidos.
+- El rechazo de temperaturas y humedades no numéricas.
+- El rechazo de humedades menores que `0` o mayores que `100`.
+- La aceptación de los valores límite `0` y `100`.
+- La conservación de los umbrales anteriores después de una configuración inválida.
+
+Las pruebas esperaban la existencia de `AnomalyThresholds` y `InvalidThresholdError`. La primera ejecución produjo un error porque el módulo `anomaly_thresholds.py` todavía no existía, lo cual confirmó correctamente la fase RED.
+
+**GREEN:** se propuso crear `anomaly_thresholds.py` con una clase que inicializara los umbrales predeterminados y proporcionara el método `update()`. La implementación validó primero todos los datos y solamente sustituyó los umbrales cuando ambos valores eran válidos. También rechazó explícitamente los valores booleanos, debido a que Python los considera una subclase de `int`.
+
+Después de implementar el comportamiento mínimo, las ocho pruebas de `US-04` y las veintitrés pruebas de la Semana 2 finalizaron correctamente.
+
+**REFACTOR:** la IA identificó que la validación numérica estaba repetida para la temperatura y la humedad. Como mejora, propuso extraerla al método privado `_require_numeric()`, que recibe el valor y el nombre del umbral para generar el mensaje de error correspondiente.
+
+#### Decisión tomada
+
+Acepté las pruebas propuestas porque representaban directamente los criterios de aceptación de `US-04`. No se agregaron límites para la temperatura, ya que la historia de usuario solamente solicita rechazar valores no numéricos y restringir la humedad al intervalo de `0` a `100`.
+
+También acepté la implementación mínima de GREEN y el refactor de la validación numérica. Antes de registrar cada cambio, comprobé que las fases RED, GREEN y REFACTOR permanecieran separadas en commits distintos.
+
+#### Cambios realizados
+
+Se realizaron los siguientes cambios:
+
+- Se creó `test_anomaly_thresholds.py` con las pruebas correspondientes a los criterios de aceptación.
+- Se creó la excepción `InvalidThresholdError`.
+- Se implementaron los umbrales predeterminados de `35 °C` y `80 %`.
+- Se agregó el método `update()` para guardar configuraciones personalizadas.
+- Se validaron los valores antes de modificar los umbrales vigentes.
+- Se rechazaron datos no numéricos, valores booleanos y humedades fuera del intervalo permitido.
+- Se garantizó la conservación de los valores anteriores cuando la configuración fuera inválida.
+- Se extrajo `_require_numeric()` para eliminar la duplicación de la validación numérica.
+
+Al finalizar, las veintitrés pruebas de la Semana 2 continuaron pasando y las comprobaciones realizadas con Ruff y Mypy no presentaron errores.
+
+#### Justificación
+
+El uso de TDD permitió definir el comportamiento esperado antes de crear la implementación. La fase GREEN incorporó solamente lo necesario para satisfacer los criterios de aceptación, mientras que REFACTOR redujo la duplicación sin cambiar los resultados. Las propuestas de la IA fueron revisadas antes de aplicarse para mantener el desarrollo dentro del alcance de `US-04`.
