@@ -1,0 +1,19 @@
+[tool.pytest.ini_options]
+testpaths = ["semana2/tests"]
+addopts = [
+    "--cov=semana2",
+    "--cov-report=term-missing",
+    "--cov-fail-under=80",
+]
+
+[tool.ruff]
+line-length = 88
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+
+[tool.mypy]
+disallow_untyped_defs = true
+warn_return_any = true
+warn_unused_configs = true
+explicit_package_bases = true
