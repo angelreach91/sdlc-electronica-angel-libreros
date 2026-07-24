@@ -980,3 +980,60 @@ Las recomendaciones no se aplicaron automáticamente: cada archivo, comando y re
 La IA se utilizó como apoyo para interpretar los requisitos, proponer una configuración inicial y diagnosticar el problema encontrado durante las comprobaciones. La revisión de la estructura, los imports y los resultados permitió comprender las propuestas antes de incorporarlas.
 
 La Definition of Done documenta el nivel de calidad que deberán cumplir las siguientes historias, mientras que la configuración automatizada permite verificar objetivamente parte de esos criterios. Esto evita considerar terminada una funcionalidad únicamente porque el código parece funcionar.
+
+## Revisión del backlog y planeación del Sprint 1
+
+### Objetivo
+
+Revisar la calidad de las 12 historias de usuario existentes y formalizar la planeación del Sprint 1 de acuerdo con la rúbrica. La planeación debía incluir un Sprint Goal, entre cinco y siete historias justificadas, tareas con duración máxima de cuatro horas y la Definition of Done aplicable.
+
+### Herramienta utilizada
+
+- ChatGPT Codex.
+
+### Prompt utilizado
+
+> Ya contamos con 12 historias de usuario en `semana2/backlog.md`. Todas tienen prioridad MoSCoW y Story Points. La `US-01` está terminada, la `US-02` a la `US-07` están en Sprint y la `US-08` a la `US-12` permanecen en Backlog. Revisa su calidad conforme a la rúbrica y ayúdame a definir el Sprint Goal, justificar la selección de siete historias y dividirlas en tareas de máximo cuatro horas, sin saltarnos el proceso ni crear trabajo innecesario.
+
+### Propuesta de la IA
+
+La IA revisó las 12 historias y determinó que el Product Backlog ya superaba el mínimo solicitado. También comprobó que las historias contenían rol, necesidad, valor, escenarios Gherkin, prioridad MoSCoW y Story Points.
+
+Se propuso conservar como selección del Sprint 1 las historias `US-01` a `US-07`, que suman 27 Story Points y forman el siguiente flujo funcional:
+
+1. Registrar un sensor.
+2. Recibir una lectura.
+3. Validar sus datos.
+4. Configurar los umbrales.
+5. Detectar anomalías.
+6. Generar una alerta.
+7. Mostrarla y almacenarla.
+
+También se propuso crear `semana2/eval1/SPRINT_PLANNING.md` con el Sprint Goal, la selección justificada, el estado de cada historia, la descomposición en tareas y la referencia a la Definition of Done.
+
+### Decisión tomada
+
+Se aceptó la revisión de calidad y la estructura propuesta para la planeación porque correspondían con el contenido real de `backlog.md` y con los requisitos de la rúbrica.
+
+Se rechazó crear historias adicionales, ya que el backlog ya contenía 12 historias completas. También se descartó mover la `US-08` al Sprint para reemplazar la `US-01`, porque una historia terminada continúa formando parte de la selección original del Sprint. Por ello, la `US-01` permanece contabilizada como `Done`, mientras que la `US-02` a la `US-07` representan el trabajo pendiente.
+
+La planeación fue revisada antes de aprobarse para comprobar que las siete historias sumaran 27 Story Points, que todas fueran prioridad Must y que ninguna tarea individual superara las cuatro horas.
+
+### Cambios realizados
+
+- Se revisaron las 12 historias existentes en `semana2/backlog.md`.
+- Se confirmó que no era necesario crear historias adicionales.
+- Se conservaron `US-01` a `US-07` como selección del Sprint 1.
+- Se mantuvieron `US-08` a `US-12` en el Product Backlog.
+- Se redactó un Sprint Goal relacionado con el núcleo del sistema de monitoreo.
+- Se justificó la selección de las siete historias.
+- Se dividieron las historias en tareas estimadas de máximo cuatro horas.
+- Se documentó que la `US-01` está terminada y que las demás historias seleccionadas permanecen pendientes.
+- Se creó `semana2/eval1/SPRINT_PLANNING.md`.
+- No se realizaron cambios en el código fuente.
+
+### Justificación
+
+La IA permitió contrastar el backlog existente con la rúbrica e identificar que parte del trabajo solicitado ya había sido adelantado. La propuesta no se aceptó automáticamente: se compararon las historias, sus prioridades, sus estimaciones y su estado en el tablero antes de aprobar la planeación.
+
+Conservar la selección original evita modificar artificialmente el alcance del Sprint después de haber completado una historia. La descomposición en tareas permite visualizar el trabajo pendiente y cumplir el límite de cuatro horas establecido por la actividad.
