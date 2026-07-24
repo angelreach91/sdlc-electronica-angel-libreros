@@ -2,8 +2,14 @@ from datetime import datetime, timezone
 
 import pytest
 
-from semana2.eval1.readings import ReadingRecorder, SensorReading
-from semana2.sensor_registry import SensorNotFoundError, SensorRegistry
+from semana2.eval1.readings import (
+    ReadingRecorder,
+    SensorReading,
+)
+from semana2.sensor_registry import (
+    SensorNotFoundError,
+    SensorRegistry,
+)
 
 
 def test_record_reading_associates_sensor_and_reception_time() -> None:
