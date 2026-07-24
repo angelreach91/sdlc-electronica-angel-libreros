@@ -9,31 +9,36 @@ class AnomalyThresholds:
         self.temperature = 35.0
         self.humidity = 80.0
 
+    @staticmethod
+    def _require_numeric(
+        value: object,
+        threshold_name: str,
+    ) -> int | float:
+        if isinstance(value, bool) or not isinstance(value, (int, float)):
+            raise InvalidThresholdError(
+                f"El umbral de {threshold_name} debe ser numérico."
+            )
+
+        return value
+
     def update(
         self,
         temperature: float,
         humidity: float,
     ) -> None:
-        if isinstance(temperature, bool) or not isinstance(
+        numeric_temperature = self._require_numeric(
             temperature,
-            (int, float),
-        ):
-            raise InvalidThresholdError(
-                "El umbral de temperatura debe ser numérico."
-            )
-
-        if isinstance(humidity, bool) or not isinstance(
+            "temperatura",
+        )
+        numeric_humidity = self._require_numeric(
             humidity,
-            (int, float),
-        ):
-            raise InvalidThresholdError(
-                "El umbral de humedad debe ser numérico."
-            )
+            "humedad",
+        )
 
-        if not 0.0 <= humidity <= 100.0:
+        if not 0.0 <= numeric_humidity <= 100.0:
             raise InvalidThresholdError(
                 "El umbral de humedad debe estar entre 0 y 100."
             )
 
-        self.temperature = float(temperature)
-        self.humidity = float(humidity)
+        self.temperature = float(numeric_temperature)
+        self.humidity = float(numeric_humidity)
