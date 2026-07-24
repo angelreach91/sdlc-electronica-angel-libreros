@@ -931,21 +931,21 @@ La IA se utilizó como apoyo para dividir la historia de usuario, proponer las p
 
 Además, se solicitó una explicación completa de la implementación para comprender el funcionamiento del conjunto, las excepciones, los métodos auxiliares, las anotaciones de tipo y las pruebas con `pytest`. Esto permitió verificar que el resultado respondiera a la historia de usuario y que el refactor modificara únicamente la estructura interna.
 
-## Configuración de la Definition of Done y calidad automatizada
+### Configuración de la Definition of Done y calidad automatizada
 
-### Objetivo
+#### Objetivo
 
 Establecer los criterios que debe cumplir una historia de usuario para considerarse terminada y configurar las comprobaciones automáticas de calidad solicitadas para la Semana 2.
 
-### Herramienta utilizada
+#### Herramienta utilizada
 
 ChatGPT.
 
-### Prompt utilizado
+#### Prompt utilizado
 
 > Necesito realizar la actividad del jueves de la Semana 2. Ayúdame a crear una Definition of Done para el proyecto, configurar las herramientas de calidad automatizada y aplicar correctamente el flujo de ramas y Pull Requests. Explícame cada paso para comprender qué estamos haciendo y cómo se relaciona con Scrum.
 
-### Propuesta de la IA
+#### Propuesta de la IA
 
 La IA propuso crear el archivo `semana2/DEFINITION_OF_DONE.md` con criterios funcionales, prácticas de TDD, comprobaciones de calidad, documentación, revisión y control de versiones. También sugirió centralizar la configuración del proyecto mediante `pyproject.toml`, estableciendo una cobertura mínima del 80 %, reglas de análisis para el código y la exigencia de anotaciones de tipo.
 
@@ -953,7 +953,7 @@ Durante la comprobación del proyecto, la IA ayudó a interpretar un error provo
 
 También se propuso realizar el trabajo en la rama `chore/calidad-automatizada-semana2`, revisar los cambios antes de confirmarlos y utilizar posteriormente un Pull Request como espacio de auto-revisión antes de fusionar la rama con `main`.
 
-### Decisión tomada
+#### Decisión tomada
 
 Se aceptó la estructura propuesta para la Definition of Done porque reúne los requisitos de la actividad y establece criterios claros para determinar cuándo una historia puede pasar a `Done`.
 
@@ -961,7 +961,7 @@ También se aceptó utilizar `pyproject.toml` para centralizar las comprobacione
 
 Las recomendaciones no se aplicaron automáticamente: cada archivo, comando y resultado se revisó para comprender su finalidad antes de continuar.
 
-### Cambios realizados
+#### Cambios realizados
 
 - Se creó `semana2/DEFINITION_OF_DONE.md`.
 - Se creó y configuró `pyproject.toml`.
@@ -975,27 +975,27 @@ Las recomendaciones no se aplicaron automáticamente: cada archivo, comando y re
 - Se revisó el `diff` antes de crear el commit.
 - Se registraron los cambios en una rama independiente.
 
-### Justificación
+#### Justificación
 
 La IA se utilizó como apoyo para interpretar los requisitos, proponer una configuración inicial y diagnosticar el problema encontrado durante las comprobaciones. La revisión de la estructura, los imports y los resultados permitió comprender las propuestas antes de incorporarlas.
 
 La Definition of Done documenta el nivel de calidad que deberán cumplir las siguientes historias, mientras que la configuración automatizada permite verificar objetivamente parte de esos criterios. Esto evita considerar terminada una funcionalidad únicamente porque el código parece funcionar.
 
-## Revisión del backlog y planeación del Sprint 1
+### Revisión del backlog y planeación del Sprint 1
 
-### Objetivo
+#### Objetivo
 
 Revisar la calidad de las 12 historias de usuario existentes y formalizar la planeación del Sprint 1 de acuerdo con la rúbrica. La planeación debía incluir un Sprint Goal, entre cinco y siete historias justificadas, tareas con duración máxima de cuatro horas y la Definition of Done aplicable.
 
-### Herramienta utilizada
+#### Herramienta utilizada
 
 - ChatGPT Codex.
 
-### Prompt utilizado
+#### Prompt utilizado
 
 > Ya contamos con 12 historias de usuario en `semana2/backlog.md`. Todas tienen prioridad MoSCoW y Story Points. La `US-01` está terminada, la `US-02` a la `US-07` están en Sprint y la `US-08` a la `US-12` permanecen en Backlog. Revisa su calidad conforme a la rúbrica y ayúdame a definir el Sprint Goal, justificar la selección de siete historias y dividirlas en tareas de máximo cuatro horas, sin saltarnos el proceso ni crear trabajo innecesario.
 
-### Propuesta de la IA
+#### Propuesta de la IA
 
 La IA revisó las 12 historias y determinó que el Product Backlog ya superaba el mínimo solicitado. También comprobó que las historias contenían rol, necesidad, valor, escenarios Gherkin, prioridad MoSCoW y Story Points.
 
@@ -1011,7 +1011,7 @@ Se propuso conservar como selección del Sprint 1 las historias `US-01` a `US-07
 
 También se propuso crear `semana2/eval1/SPRINT_PLANNING.md` con el Sprint Goal, la selección justificada, el estado de cada historia, la descomposición en tareas y la referencia a la Definition of Done.
 
-### Decisión tomada
+#### Decisión tomada
 
 Se aceptó la revisión de calidad y la estructura propuesta para la planeación porque correspondían con el contenido real de `backlog.md` y con los requisitos de la rúbrica.
 
@@ -1019,7 +1019,7 @@ Se rechazó crear historias adicionales, ya que el backlog ya contenía 12 histo
 
 La planeación fue revisada antes de aprobarse para comprobar que las siete historias sumaran 27 Story Points, que todas fueran prioridad Must y que ninguna tarea individual superara las cuatro horas.
 
-### Cambios realizados
+#### Cambios realizados
 
 - Se revisaron las 12 historias existentes en `semana2/backlog.md`.
 - Se confirmó que no era necesario crear historias adicionales.
@@ -1032,8 +1032,72 @@ La planeación fue revisada antes de aprobarse para comprobar que las siete hist
 - Se creó `semana2/eval1/SPRINT_PLANNING.md`.
 - No se realizaron cambios en el código fuente.
 
-### Justificación
+#### Justificación
 
 La IA permitió contrastar el backlog existente con la rúbrica e identificar que parte del trabajo solicitado ya había sido adelantado. La propuesta no se aceptó automáticamente: se compararon las historias, sus prioridades, sus estimaciones y su estado en el tablero antes de aprobar la planeación.
 
 Conservar la selección original evita modificar artificialmente el alcance del Sprint después de haber completado una historia. La descomposición en tareas permite visualizar el trabajo pendiente y cumplir el límite de cuatro horas establecido por la actividad.
+
+### Desarrollo mediante TDD del registro de lecturas
+
+#### Objetivo
+
+Implementar la historia `US-02` para registrar lecturas de temperatura y humedad únicamente cuando el sensor exista. También se debía conservar el historial de lecturas y asignar automáticamente la fecha y hora de recepción, mostrando evidencia del ciclo RED → GREEN → REFACTOR.
+
+#### Herramientas utilizadas
+
+- ChatGPT Codex.
+- GitHub Copilot.
+
+#### Prompts utilizados
+
+Para preparar las pruebas y la implementación:
+
+> Ayúdame a desarrollar la `US-02` mediante TDD. Necesito registrar lecturas de temperatura y humedad, asociarlas con un sensor existente, conservar las lecturas anteriores y rechazar sensores inexistentes. Las validaciones de los valores pertenecen a la `US-03` y todavía no deben implementarse.
+
+Para corregir el aviso en el archivo de pruebas:
+
+> Corrige el problema de orden en las importaciones de este archivo.
+
+#### Propuesta de la IA
+
+Codex propuso crear tres pruebas automatizadas antes de realizar la implementación:
+
+1. Registrar una lectura asociada con un sensor existente y asignarle la fecha y hora de recepción.
+2. Conservar las lecturas anteriores cuando se registren nuevos datos.
+3. Rechazar una lectura perteneciente a un sensor inexistente sin almacenarla.
+
+Durante la fase RED, las pruebas fallaron porque todavía no existía el módulo `semana2.eval1.readings`.
+
+Para alcanzar GREEN, se propusieron las clases `SensorReading` y `ReadingRecorder`. La primera representa los datos de una lectura, mientras que la segunda comprueba la existencia del sensor, obtiene la fecha mediante un reloj inyectado y conserva las lecturas registradas.
+
+Posteriormente, Ruff detectó un problema en la organización de las importaciones del archivo de pruebas. Copilot propuso reorganizarlas utilizando el formato recomendado por la herramienta, sin modificar el comportamiento de las pruebas.
+
+#### Decisión tomada
+
+Se aceptaron las tres pruebas porque representan los comportamientos solicitados por la `US-02`. También se aceptó la implementación mínima propuesta para GREEN, después de revisar que reutilizara `SensorRegistry` y que no incorporara las validaciones reservadas para la `US-03`.
+
+La reorganización de las importaciones propuesta por Copilot se aceptó únicamente después de comprobarla nuevamente con Ruff, Mypy y Pytest.
+
+No se agregaron validaciones de temperatura, humedad ni datos incompletos, debido a que esas reglas corresponden a la siguiente historia de usuario.
+
+#### Cambios realizados
+
+- Se creó `semana2/eval1/tests/test_sensor_reading.py`.
+- Se agregaron tres pruebas automatizadas para la `US-02`.
+- Se comprobó la fase RED mediante el error causado por la ausencia de `semana2.eval1.readings`.
+- Se creó `semana2/eval1/readings.py`.
+- Se implementó `SensorReading` como una estructura de datos inmutable.
+- Se implementó `ReadingRecorder` para registrar y conservar lecturas.
+- Se reutilizó `SensorRegistry` para comprobar la existencia de los sensores.
+- Se inyectó un reloj para controlar la fecha y hora durante las pruebas.
+- Se reorganizaron las importaciones del archivo de pruebas para corregir el aviso de Ruff.
+- Las tres pruebas de la historia terminaron correctamente.
+- La ejecución completa de Semana 2 terminó con ocho pruebas aprobadas.
+- Ruff y Mypy finalizaron sin errores.
+
+#### Justificación
+
+La IA se utilizó como apoyo para convertir los criterios de aceptación de la historia en pruebas automatizadas y para proponer una implementación mínima. El código no se aceptó automáticamente: se verificó que cada prueba correspondiera con la `US-02`, se ejecutó primero la fase RED y se comprobó que GREEN no afectara la funcionalidad anterior.
+
+La propuesta de Copilot únicamente modificó la organización de las importaciones. Su validez se confirmó mediante las herramientas de calidad y la ejecución completa de las pruebas. De esta manera, se conservó el comportamiento del sistema y se dejó evidencia del ciclo RED → GREEN → REFACTOR.
