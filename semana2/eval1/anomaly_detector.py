@@ -26,25 +26,45 @@ class AnomalyDetector:
     def __init__(self, thresholds: AnomalyThresholds) -> None:
         self._thresholds = thresholds
 
+    @staticmethod
+    def _detect_anomaly(
+        variable: str,
+        value: float,
+        threshold: float,
+    ) -> Anomaly | None:
+        if value <= threshold:
+            return None
+
+        return Anomaly(
+            variable=variable,
+            value=value,
+            threshold=threshold,
+        )
+
     def analyze(self, reading: SensorReading) -> AnalysisResult:
         anomalies: list[Anomaly] = []
 
-        if reading.temperature > self._thresholds.temperature:
-            anomalies.append(
-                Anomaly(
-                    variable="temperature",
-                    value=reading.temperature,
-                    threshold=self._thresholds.temperature,
-                )
+        variables = (
+            (
+                "temperature",
+                reading.temperature,
+                self._thresholds.temperature,
+            ),
+            (
+                "humidity",
+                reading.humidity,
+                self._thresholds.humidity,
+            ),
+        )
+
+        for variable, value, threshold in variables:
+            anomaly = self._detect_anomaly(
+                variable=variable,
+                value=value,
+                threshold=threshold,
             )
 
-        if reading.humidity > self._thresholds.humidity:
-            anomalies.append(
-                Anomaly(
-                    variable="humidity",
-                    value=reading.humidity,
-                    threshold=self._thresholds.humidity,
-                )
-            )
+            if anomaly is not None:
+                anomalies.append(anomaly)
 
         return AnalysisResult(anomalies=tuple(anomalies))
