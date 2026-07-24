@@ -766,6 +766,8 @@ La decisión sobre qué propuestas conservar permaneció bajo revisión humana. 
 
 Como resultado, el driver quedó dividido en componentes con responsabilidades específicas y acompañado de pruebas automatizadas. El uso de la IA también permitió identificar qué partes todavía necesitan mayor estudio, especialmente el funcionamiento interno de UART y los protocolos procesados.
 
+## Semana 2
+
 ### Entrada: Elaboración y revisión del backlog del sistema de monitoreo ambiental
 
 #### Objetivo
@@ -1101,3 +1103,67 @@ No se agregaron validaciones de temperatura, humedad ni datos incompletos, debid
 La IA se utilizó como apoyo para convertir los criterios de aceptación de la historia en pruebas automatizadas y para proponer una implementación mínima. El código no se aceptó automáticamente: se verificó que cada prueba correspondiera con la `US-02`, se ejecutó primero la fase RED y se comprobó que GREEN no afectara la funcionalidad anterior.
 
 La propuesta de Copilot únicamente modificó la organización de las importaciones. Su validez se confirmó mediante las herramientas de calidad y la ejecución completa de las pruebas. De esta manera, se conservó el comportamiento del sistema y se dejó evidencia del ciclo RED → GREEN → REFACTOR.
+
+### Desarrollo de US-03 mediante TDD
+
+#### Objetivo
+
+Desarrollar la validación de lecturas de sensores mediante el ciclo TDD: RED, GREEN y REFACTOR. La implementación debía rechazar datos incompletos, valores no numéricos y humedades fuera del intervalo de `0` a `100`, evitando que las lecturas inválidas fueran almacenadas.
+
+#### Herramientas utilizadas
+
+ChatGPT y Codex.
+
+#### Prompt utilizado
+
+> Ayúdame a desarrollar US-03 mediante TDD. Primero necesito crear pruebas que comprueben el rechazo de datos incompletos, valores no numéricos y humedades fuera del intervalo de 0 a 100. Después, propón la implementación mínima para aprobarlas y revisa si existe un refactor que mejore el código sin cambiar su comportamiento.
+
+#### Propuesta de la IA
+
+La IA propuso desarrollar la historia mediante las tres fases de TDD:
+
+**RED:** se agregaron pruebas en `test_sensor_reading.py` para comprobar:
+
+- Temperatura o humedad ausentes.
+- Temperatura o humedad no numéricas.
+- Humedad menor que `0` o mayor que `100`.
+- Aceptación de los límites `0` y `100`.
+- Ausencia de lecturas almacenadas después de un intento inválido.
+
+Las pruebas esperaban una excepción llamada `InvalidReadingError`. Al ejecutarlas por primera vez, fallaron porque dicha excepción todavía no existía, confirmando correctamente la fase RED.
+
+**GREEN:** se propuso implementar en `readings.py` la excepción `InvalidReadingError` y el método `_validate_values()`. La validación comprueba que la temperatura y la humedad sean valores numéricos, rechaza explícitamente los booleanos y verifica que la humedad se encuentre entre `0` y `100`. Esta validación se ejecuta antes de almacenar la lectura.
+
+Con la implementación mínima, las diez pruebas de `test_sensor_reading.py` y las quince pruebas de la Semana 2 finalizaron correctamente.
+
+**REFACTOR:** Codex identificó que la comprobación del tipo numérico estaba repetida para la temperatura y la humedad. Por ello, propuso extraerla al método `_require_numeric()` y reutilizarla desde `_validate_values()`.
+
+Durante la revisión también se confirmó que el import correcto era:
+
+`from semana2.sensor_registry import SensorRegistry`
+
+debido a la ubicación real de `sensor_registry.py` dentro del proyecto.
+
+#### Decisión tomada
+
+Acepté las pruebas propuestas porque representaban directamente los criterios de aceptación de `US-03`. También acepté la implementación mínima para alcanzar GREEN y el refactor que eliminaba la comprobación numérica repetida.
+
+La propuesta de la IA fue revisada antes de aplicarse. Se conservaron únicamente `_require_numeric()`, la simplificación de `_validate_values()` y el import correspondiente a la estructura real del proyecto. Se descartaron modificaciones adicionales relacionadas con el constructor y un reloj predeterminado porque no formaban parte de `US-03`.
+
+#### Cambios realizados
+
+Se realizaron los siguientes cambios:
+
+- Se agregaron pruebas para valores incompletos, no numéricos y humedades fuera del intervalo permitido.
+- Se creó la excepción `InvalidReadingError`.
+- Se incorporó la validación antes del almacenamiento de cada lectura.
+- Se comprobó que las lecturas inválidas no modificaran el estado del registrador.
+- Se creó `_require_numeric()` para centralizar la validación de valores numéricos.
+- Se simplificó `_validate_values()` sin modificar el comportamiento aprobado durante GREEN.
+- Se mantuvo el import de `SensorRegistry` de acuerdo con la estructura real del proyecto.
+
+Al finalizar, las quince pruebas de la Semana 2 continuaron pasando y las comprobaciones de Ruff y Mypy no presentaron errores.
+
+#### Justificación
+
+El uso de TDD permitió definir primero el comportamiento esperado, implementar solamente lo necesario y mejorar posteriormente la estructura interna sin alterar los resultados. La propuesta de la IA no se incorporó automáticamente: se revisaron las pruebas, el código y el diff para mantener el alcance limitado a `US-03`.
