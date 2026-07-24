@@ -1227,3 +1227,66 @@ Al finalizar, las veintitrés pruebas de la Semana 2 continuaron pasando y las c
 #### Justificación
 
 El uso de TDD permitió definir el comportamiento esperado antes de crear la implementación. La fase GREEN incorporó solamente lo necesario para satisfacer los criterios de aceptación, mientras que REFACTOR redujo la duplicación sin cambiar los resultados. Las propuestas de la IA fueron revisadas antes de aplicarse para mantener el desarrollo dentro del alcance de `US-04`.
+
+### Entrada — Desarrollo de US-05 mediante TDD
+
+#### Objetivo
+
+Desarrollar la detección de condiciones ambientales anómalas mediante el ciclo TDD: RED, GREEN y REFACTOR. El sistema debía comparar cada lectura con los umbrales vigentes, identificar si la temperatura, la humedad o ambas variables superaban sus límites y conservar los valores analizados junto con los umbrales utilizados.
+
+#### Herramienta utilizada
+
+ChatGPT.
+
+#### Prompt utilizado
+
+> Ayúdame a desarrollar US-05 mediante TDD. Necesito crear primero las pruebas para detectar cuándo la temperatura, la humedad o ambas variables superan sus umbrales. El resultado debe conservar los valores analizados y los umbrales utilizados. Después, propón la implementación mínima y un refactor que reduzca la duplicación sin cambiar el comportamiento.
+
+#### Propuesta de la IA
+
+La IA propuso desarrollar la historia mediante las fases RED, GREEN y REFACTOR.
+
+**RED:** se creó `test_anomaly_detector.py` con pruebas para comprobar:
+
+- La detección de una temperatura superior a su umbral.
+- La detección de una humedad superior a su umbral.
+- La detección simultánea de ambas variables.
+- La conservación del valor analizado y del umbral utilizado.
+- La ausencia de anomalías cuando los valores fueran iguales o inferiores a sus límites.
+
+Las pruebas esperaban la existencia de `AnomalyDetector`. La primera ejecución produjo un error porque `anomaly_detector.py` todavía no existía, lo cual confirmó correctamente la fase RED.
+
+**GREEN:** se propuso crear `anomaly_detector.py` con las clases inmutables `Anomaly` y `AnalysisResult`. También se implementó `AnomalyDetector`, que recibe los umbrales vigentes y analiza objetos `SensorReading`.
+
+La implementación comparó cada valor mediante el operador `>`, por lo que un valor igual al umbral no se considera anómalo. El detector podía devolver ninguna, una o dos anomalías, conservando en cada una el nombre de la variable, el valor recibido y el límite utilizado.
+
+Después de implementar el comportamiento mínimo, las seis pruebas de `US-05` y las veintinueve pruebas de la Semana 2 finalizaron correctamente.
+
+**REFACTOR:** la IA identificó duplicación en la comparación de las variables y en la construcción de los objetos `Anomaly`. Se extrajo el método privado `_detect_anomaly()` y se organizaron los datos de temperatura y humedad en una colección recorrida mediante un ciclo.
+
+#### Decisión tomada
+
+Acepté las pruebas porque representaban directamente los criterios de aceptación de `US-05`. Se mantuvo una comparación estricta mediante `>`, ya que los valores iguales o inferiores al umbral no deben producir anomalías.
+
+También acepté representar cada anomalía mediante un objeto inmutable que conserva la variable, el valor analizado y el umbral utilizado. Antes del commit de REFACTOR se revisó nuevamente la propuesta para evitar una solución indirecta basada en valores opcionales y recorridos adicionales.
+
+#### Cambios realizados
+
+Se realizaron los siguientes cambios:
+
+- Se creó `test_anomaly_detector.py` con las pruebas de los criterios de aceptación.
+- Se creó la clase inmutable `Anomaly`.
+- Se creó la clase inmutable `AnalysisResult`.
+- Se implementó `AnomalyDetector`.
+- Se permitió detectar anomalías de temperatura y humedad de forma independiente.
+- Se permitió detectar ambas anomalías en una misma lectura.
+- Se conservaron los valores analizados y los umbrales utilizados.
+- Se estableció que los valores iguales o inferiores al umbral no son anómalos.
+- Se extrajo `_detect_anomaly()` para centralizar la comparación y construcción de anomalías.
+- Se organizó el análisis mediante un único ciclo para reducir la duplicación.
+
+Al finalizar, las veintinueve pruebas de la Semana 2 continuaron pasando y las comprobaciones con Ruff y Mypy no presentaron errores.
+
+#### Justificación
+
+El ciclo TDD permitió establecer el comportamiento esperado antes de implementar el detector. La fase GREEN incorporó únicamente los elementos necesarios para satisfacer los criterios de aceptación. Posteriormente, REFACTOR redujo la duplicación y mantuvo una estructura clara sin modificar los resultados. Las propuestas de la IA fueron revisadas y ajustadas antes de aplicarse.
