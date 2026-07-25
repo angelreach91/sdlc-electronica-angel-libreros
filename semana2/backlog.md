@@ -8,6 +8,30 @@
 - Los avisos de inactividad no se contabilizan como anomalías ambientales.
 - Las consultas, los filtros, los resúmenes y las exportaciones no modifican el historial.
 
+## Estado actual
+
+El Product Backlog está ordenado de acuerdo con la prioridad MoSCoW y las dependencias funcionales del sistema. Las historias `US-01` a `US-07` fueron completadas durante el Sprint 1. Las historias `US-08` a `US-12` permanecen disponibles para Sprints posteriores.
+
+| Orden | Historia | Prioridad | Story Points | Estado |
+|---:|---|---|---:|---|
+| 1 | US-01 — Registrar un sensor | Must | 3 | Done |
+| 2 | US-02 — Registrar una lectura | Must | 3 | Done |
+| 3 | US-03 — Validar una lectura | Must | 3 | Done |
+| 4 | US-04 — Configurar umbrales | Must | 3 | Done |
+| 5 | US-05 — Detectar anomalías | Must | 5 | Done |
+| 6 | US-06 — Generar una alerta | Must | 5 | Done |
+| 7 | US-07 — Mostrar y guardar alertas | Must | 5 | Done |
+| 8 | US-08 — Consultar el historial | Should | 3 | Product Backlog |
+| 9 | US-09 — Filtrar el historial | Should | 5 | Product Backlog |
+| 10 | US-10 — Generar un resumen estadístico | Should | 5 | Product Backlog |
+| 11 | US-11 — Detectar sensores inactivos | Should | 5 | Product Backlog |
+| 12 | US-12 — Exportar un reporte | Could | 5 | Product Backlog |
+
+**Total del Product Backlog:** 50 Story Points.  
+**Completado en el Sprint 1:** 27 Story Points.  
+**Trabajo pendiente:** 23 Story Points.
+
+## Historias de usuario
 ## US-01: Registrar un sensor
 
 **Como** operador de la bodega industrial,  
