@@ -1357,3 +1357,82 @@ Al finalizar, las treinta y cuatro pruebas de la Semana 2 continuaron pasando y 
 #### Justificación
 
 El ciclo TDD permitió establecer el comportamiento esperado antes de implementar la generación de alertas. La fase GREEN incorporó únicamente los elementos necesarios para satisfacer los criterios de aceptación. Posteriormente, REFACTOR expresó con mayor claridad que la generación de alertas no depende de un estado interno, sin modificar los resultados obtenidos. Las propuestas realizadas por la IA fueron revisadas antes de incorporarlas al proyecto.
+
+### Entrada — Desarrollo de US-07 mediante TDD
+
+#### Objetivo
+
+Desarrollar la publicación de alertas mediante el ciclo TDD: RED, GREEN y REFACTOR. Cada alerta debía mostrarse en consola y almacenarse en un archivo JSON Lines. Los nuevos registros debían agregarse sin eliminar los anteriores y, si ocurría un error durante la escritura, la alerta todavía debía mostrarse y el problema debía informarse claramente.
+
+#### Herramienta utilizada
+
+ChatGPT.
+
+#### Prompt utilizado
+
+> Ayúdame a desarrollar US-07 mediante TDD. Necesito mostrar cada alerta en consola y almacenarla en formato JSON Lines. El archivo debe crearse si no existe y las nuevas alertas deben agregarse sin borrar las anteriores. Si el almacenamiento falla, la alerta debe seguir apareciendo en consola y se debe informar claramente el error de escritura.
+
+#### Propuesta de la IA
+
+La IA propuso desarrollar la historia mediante las fases RED, GREEN y REFACTOR.
+
+**RED:** se creó `test_alert_publisher.py` con pruebas para comprobar:
+
+- La presentación de la alerta en consola como un objeto JSON.
+- La creación del archivo JSON Lines cuando todavía no existe.
+- El almacenamiento de un registro equivalente a la alerta.
+- La escritura de cada alerta en una línea independiente.
+- La conservación de registros anteriores al publicar nuevas alertas.
+- La presentación de la alerta incluso cuando ocurre un error de almacenamiento.
+- La notificación del error de escritura mediante la salida de error.
+
+Las pruebas esperaban la existencia de `AlertPublisher`. La primera ejecución produjo un error porque `alert_publisher.py` todavía no existía, lo cual confirmó correctamente la fase RED.
+
+**GREEN:** se propuso crear `alert_publisher.py` con la clase `AlertPublisher`.
+
+La implementación mínima convirtió cada objeto `AnomalyAlert` en un registro serializable con el identificador del sensor, la fecha y hora de la lectura y la colección de anomalías. Posteriormente, el registro se transformó a JSON, se mostró en consola y se escribió en el archivo configurado.
+
+El archivo se abrió en modo de adición mediante `"a"`, permitiendo crearlo cuando no existía y agregar alertas sin eliminar los registros anteriores. Los errores derivados de la escritura se capturaron mediante `OSError` y se informaron por la salida de error sin impedir la presentación de la alerta en consola.
+
+Después de implementar el comportamiento mínimo, las cuatro pruebas de `US-07` y las treinta y ocho pruebas de la Semana 2 finalizaron correctamente.
+
+**REFACTOR:** la IA propuso separar las operaciones internas de `AlertPublisher` para evitar que `publish()` concentrara toda la lógica.
+
+Se extrajo el método estático `_serialize()`, responsable de convertir la alerta en una cadena JSON, y el método `_append_to_file()`, encargado exclusivamente de agregar el registro al archivo. De esta manera, `publish()` quedó como el método que coordina la presentación, el almacenamiento y el manejo de errores.
+
+Durante el cierre del refactor aparecieron modificaciones locales adicionales en archivos que no correspondían a `US-07`. Antes de crear otro commit, se revisó el estado del repositorio y se restauraron selectivamente únicamente esos cambios accidentales, sin modificar ni repetir los commits ya registrados.
+
+#### Decisión tomada
+
+Acepté las pruebas propuestas porque representan los criterios de aceptación de `US-07`. Se eligió el formato JSON Lines porque permite almacenar cada alerta como un objeto JSON independiente y agregar nuevos registros sin reescribir el contenido existente.
+
+También acepté que la alerta se muestre antes de intentar almacenarla. Esta decisión garantiza que la información permanezca visible en consola aunque falle la escritura del archivo.
+
+El refactor fue aceptado porque separa la serialización y el almacenamiento en métodos con responsabilidades específicas, mientras que `publish()` conserva la coordinación general del proceso. Los cambios locales ajenos a la historia no se incorporaron, ya que no formaban parte del alcance de `US-07`.
+
+#### Cambios realizados
+
+Se realizaron los siguientes cambios:
+
+- Se creó `test_alert_publisher.py` con las pruebas de los criterios de aceptación.
+- Se creó `alert_publisher.py`.
+- Se implementó la clase `AlertPublisher`.
+- Se convirtió cada alerta en un registro JSON.
+- Se mostró cada alerta en consola.
+- Se creó automáticamente el archivo JSON Lines cuando no existía.
+- Se escribió una alerta por línea.
+- Se agregaron registros sin eliminar las alertas anteriores.
+- Se capturaron los errores de almacenamiento mediante `OSError`.
+- Se informó el error mediante la salida de error.
+- Se mantuvo la presentación de la alerta aunque fallara el almacenamiento.
+- Se extrajo `_serialize()` para realizar la serialización.
+- Se extrajo `_append_to_file()` para realizar la escritura.
+- Se restauraron selectivamente modificaciones accidentales ajenas a la historia.
+
+Al finalizar, las treinta y ocho pruebas de la Semana 2 continuaron pasando y las comprobaciones con Ruff y Mypy no presentaron errores.
+
+#### Justificación
+
+El ciclo TDD permitió definir el comportamiento esperado antes de implementar el publicador. La fase GREEN incorporó únicamente las operaciones necesarias para satisfacer los criterios de aceptación. Posteriormente, REFACTOR separó la serialización, el almacenamiento y la coordinación general sin modificar el comportamiento verificado por las pruebas.
+
+La revisión del estado de Git también permitió evitar que modificaciones accidentales de otros archivos se incorporaran al historial de `US-07`. Las propuestas de la IA fueron revisadas antes de aplicarse y solo se conservaron los cambios relacionados con la historia.
