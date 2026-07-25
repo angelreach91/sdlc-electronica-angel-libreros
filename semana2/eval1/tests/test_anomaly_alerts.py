@@ -3,9 +3,8 @@ from datetime import datetime, timezone
 import pytest
 
 from semana2.eval1.anomaly_alerts import AlertGenerator
-from semana2.eval1.anomaly_detector import Anomaly, AnalysisResult
+from semana2.eval1.anomaly_detector import AnalysisResult, Anomaly
 from semana2.eval1.readings import SensorReading
-
 
 READING_TIME = datetime(2026, 7, 24, 18, 30, tzinfo=timezone.utc)
 
