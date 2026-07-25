@@ -1290,3 +1290,70 @@ Al finalizar, las veintinueve pruebas de la Semana 2 continuaron pasando y las c
 #### Justificación
 
 El ciclo TDD permitió establecer el comportamiento esperado antes de implementar el detector. La fase GREEN incorporó únicamente los elementos necesarios para satisfacer los criterios de aceptación. Posteriormente, REFACTOR redujo la duplicación y mantuvo una estructura clara sin modificar los resultados. Las propuestas de la IA fueron revisadas y ajustadas antes de aplicarse.
+
+### Entrada — Desarrollo de US-06 mediante TDD
+
+#### Objetivo
+
+Desarrollar la generación de alertas para las lecturas que contienen condiciones ambientales anómalas mediante el ciclo TDD: RED, GREEN y REFACTOR. Cada alerta debía conservar el identificador del sensor, la fecha y hora de la lectura, así como los valores anómalos y sus respectivos umbrales. Cuando ambas variables fueran anómalas, debían agruparse en una sola alerta.
+
+#### Herramienta utilizada
+
+ChatGPT.
+
+#### Prompt utilizado
+
+> Ayúdame a desarrollar US-06 mediante TDD. Necesito generar una sola alerta por cada lectura anómala. La alerta debe incluir el identificador del sensor, la fecha y hora de la lectura, además de los valores anómalos y sus umbrales. Si la temperatura y la humedad son anómalas, deben aparecer juntas. Si no existen anomalías, no debe generarse ninguna alerta.
+
+#### Propuesta de la IA
+
+La IA propuso desarrollar la historia mediante las fases RED, GREEN y REFACTOR.
+
+**RED:** se creó `test_anomaly_alerts.py` con pruebas para comprobar:
+
+- La generación de una alerta cuando la temperatura fuera anómala.
+- La generación de una alerta cuando la humedad fuera anómala.
+- La conservación del identificador del sensor y la fecha y hora de la lectura.
+- La agrupación de ambas anomalías en una sola alerta.
+- La ausencia de una alerta cuando el análisis no contuviera anomalías.
+- La conservación de los valores anómalos y sus umbrales mediante los objetos `Anomaly`.
+
+Las pruebas esperaban la existencia de `AlertGenerator`. La primera ejecución produjo un error porque `anomaly_alerts.py` todavía no existía, lo cual confirmó correctamente la fase RED.
+
+**GREEN:** se propuso crear `anomaly_alerts.py` con la clase inmutable `AnomalyAlert` y la clase `AlertGenerator`.
+
+La implementación mínima utilizó el método `create()`, que recibe una lectura y su resultado de análisis. Cuando el análisis no contiene anomalías, devuelve `None`. En caso contrario, crea una sola alerta con el identificador del sensor, la fecha y hora de recepción y todas las anomalías encontradas.
+
+Después de implementar el comportamiento mínimo, las cinco pruebas de `US-06` y las treinta y cuatro pruebas de la Semana 2 finalizaron correctamente.
+
+**REFACTOR:** la IA observó que `AlertGenerator` no conserva estado ni utiliza atributos de instancia. Por esta razón, propuso convertir `create()` en un método estático mediante `@staticmethod`. También se actualizaron las pruebas para mantenerlas alineadas con esta forma de invocar el generador.
+
+#### Decisión tomada
+
+Acepté las pruebas propuestas porque representan directamente los criterios de aceptación de `US-06`. También acepté utilizar un objeto inmutable para representar la alerta, ya que sus datos corresponden a una lectura que ya fue recibida y analizada.
+
+La implementación devuelve `None` cuando no existen anomalías para expresar claramente que no debe generarse una alerta. Cuando existen una o dos anomalías, ambas se conservan dentro de un único objeto `AnomalyAlert`.
+
+Acepté el refactor del método estático porque la generación de la alerta no depende del estado interno de `AlertGenerator`. El cambio se realizó después de comprobar el funcionamiento de la implementación GREEN.
+
+#### Cambios realizados
+
+Se realizaron los siguientes cambios:
+
+- Se creó `test_anomaly_alerts.py` con las pruebas de los criterios de aceptación.
+- Se creó la clase inmutable `AnomalyAlert`.
+- Se implementó `AlertGenerator`.
+- Se agregó el método `create()` para generar alertas.
+- Se conservó el identificador del sensor.
+- Se conservó la fecha y hora de la lectura.
+- Se conservaron los valores anómalos y sus respectivos umbrales.
+- Se agruparon las anomalías de temperatura y humedad en una sola alerta.
+- Se estableció que una lectura sin anomalías no produce una alerta.
+- Se convirtió `create()` en un método estático.
+- Se actualizaron las pruebas para reflejar el refactor realizado.
+
+Al finalizar, las treinta y cuatro pruebas de la Semana 2 continuaron pasando y las comprobaciones con Ruff y Mypy no presentaron errores.
+
+#### Justificación
+
+El ciclo TDD permitió establecer el comportamiento esperado antes de implementar la generación de alertas. La fase GREEN incorporó únicamente los elementos necesarios para satisfacer los criterios de aceptación. Posteriormente, REFACTOR expresó con mayor claridad que la generación de alertas no depende de un estado interno, sin modificar los resultados obtenidos. Las propuestas realizadas por la IA fueron revisadas antes de incorporarlas al proyecto.
