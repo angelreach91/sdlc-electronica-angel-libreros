@@ -12,7 +12,7 @@ class AlertPublisher:
         self._alerts_file = alerts_file
 
     def publish(self, alert: AnomalyAlert) -> None:
-        record = {
+        record: dict[str, object] = {
             "sensor_id": alert.sensor_id,
             "received_at": alert.received_at.isoformat(),
             "anomalies": [
