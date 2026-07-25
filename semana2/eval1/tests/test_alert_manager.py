@@ -14,7 +14,6 @@ from semana2.eval1.alert_manager import (
 from semana2.eval1.anomaly_alerts import AnomalyAlert
 from semana2.eval1.anomaly_detector import Anomaly
 
-
 READING_TIME = datetime(2026, 7, 24, 18, 30, tzinfo=timezone.utc)
 
 
