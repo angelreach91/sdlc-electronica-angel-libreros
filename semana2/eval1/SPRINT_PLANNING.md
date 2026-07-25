@@ -11,14 +11,14 @@ El incremento deberá cumplir las comprobaciones de calidad definidas para el pr
 | Historia | Descripción | MoSCoW | Story Points | Estado |
 |---|---|---:|---:|---|
 | US-01 | Registrar un sensor | Must | 3 | Done |
-| US-02 | Registrar una lectura de temperatura y humedad | Must | 3 | Sprint |
-| US-03 | Validar los datos de una lectura | Must | 3 | Sprint |
-| US-04 | Configurar los umbrales de anomalía | Must | 3 | Sprint |
-| US-05 | Detectar condiciones ambientales anómalas | Must | 5 | Sprint |
-| US-06 | Generar una alerta para una lectura anómala | Must | 5 | Sprint |
-| US-07 | Mostrar y guardar las alertas | Must | 5 | Sprint |
+| US-02 | Registrar una lectura de temperatura y humedad | Must | 3 | Done |
+| US-03 | Validar los datos de una lectura | Must | 3 | Done |
+| US-04 | Configurar los umbrales de anomalía | Must | 3 | Done |
+| US-05 | Detectar condiciones ambientales anómalas | Must | 5 | Done |
+| US-06 | Generar una alerta para una lectura anómala | Must | 5 | Done |
+| US-07 | Mostrar y guardar las alertas | Must | 5 | Done |
 
-**Total seleccionado:** 7 historias y 27 Story Points.
+**Total completado:** 7 historias y 27 Story Points.
 
 ## Justificación de la selección
 
@@ -36,8 +36,7 @@ El orden seleccionado respeta las dependencias entre funcionalidades:
 6. Construir una alerta.
 7. Mostrarla y almacenarla.
 
-La `US-01` ya fue completada durante el Sprint. Las historias `US-02` a `US-07` permanecen como trabajo pendiente. Las historias `US-08` a `US-12` continúan en el Product Backlog porque dependen del funcionamiento previo del núcleo y no son necesarias para obtener el primer incremento funcional.
-
+Al cierre del Sprint, las historias `US-01` a `US-07` fueron completadas y verificadas. En conjunto representan 27 Story Points y conforman el primer incremento funcional del sistema. Las historias `US-08` a `US-12` permanecen en el Product Backlog porque no fueron seleccionadas para este Sprint.
 ## Descomposición en tareas
 
 Todas las tareas tienen una duración estimada máxima de cuatro horas.
@@ -48,40 +47,40 @@ Todas las tareas tienen una duración estimada máxima de cuatro horas.
 - Implementar el registro de sensores — 1.5 horas.
 - Refactorizar y ejecutar las comprobaciones de calidad — 0.5 horas.
 
-### US-02: Registrar una lectura de temperatura y humedad
+### US-02: Registrar una lectura de temperatura y humedad — completada
 
 - Escribir las pruebas para una lectura válida y para un sensor inexistente — 1 hora.
 - Implementar `SensorReading` y el registro de lecturas — 1.5 horas.
 - Refactorizar y ejecutar las comprobaciones de calidad — 0.5 horas.
 
-### US-03: Validar los datos de una lectura
+### US-03: Validar los datos de una lectura — completada
 
 - Escribir pruebas para valores válidos, incompletos, no numéricos y fuera de rango — 1 hora.
 - Implementar las reglas de validación de las lecturas — 1 hora.
 - Refactorizar el manejo de errores y comprobar los casos límite — 0.5 horas.
 
-### US-04: Configurar los umbrales de anomalía
+### US-04: Configurar los umbrales de anomalía — completada
 
 - Escribir pruebas para umbrales predeterminados, personalizados e inválidos — 1 hora.
 - Implementar la configuración de los umbrales — 1 hora.
 - Preparar la inyección de los umbrales en el detector — 0.5 horas.
 - Refactorizar y ejecutar las comprobaciones de calidad — 0.5 horas.
 
-### US-05: Detectar condiciones ambientales anómalas
+### US-05: Detectar condiciones ambientales anómalas — completada
 
 - Escribir pruebas para anomalías de temperatura, humedad y ambas variables — 1 hora.
 - Probar los casos límite donde los valores sean iguales a los umbrales — 0.5 horas.
 - Implementar `AnomalyDetector` con umbrales inyectados — 1.5 horas.
 - Refactorizar la representación del resultado — 0.5 horas.
 
-### US-06: Generar una alerta para una lectura anómala
+### US-06: Generar una alerta para una lectura anómala — completada
 
 - Escribir pruebas para una alerta individual, una consolidada y una lectura normal — 1 hora.
 - Implementar la representación de una alerta — 1 hora.
-- Implementar `AlertManager` evitando alertas duplicadas — 1 hora.
+- Implementar la generación de una alerta consolidada a partir de las anomalías detectadas — 1 hora.
 - Refactorizar y ejecutar las comprobaciones de calidad — 0.5 horas.
 
-### US-07: Mostrar y guardar las alertas
+### US-07: Mostrar y guardar las alertas — completada
 
 - Escribir pruebas para la estrategia de consola — 0.5 horas.
 - Escribir pruebas para creación, conservación y fallo del archivo — 1 hora.
@@ -89,6 +88,21 @@ Todas las tareas tienen una duración estimada máxima de cuatro horas.
 - Implementar la estrategia de consola — 1 hora.
 - Implementar la estrategia de archivo JSON Lines — 1.5 horas.
 - Refactorizar y ejecutar las comprobaciones de calidad — 0.5 horas.
+
+## Resultado del Sprint
+
+El Sprint finalizó con las siete historias seleccionadas completadas y con un incremento capaz de registrar sensores y lecturas, validar los datos recibidos, aplicar umbrales configurables, detectar anomalías, generar alertas consolidadas y publicarlas mediante estrategias de consola y archivo.
+
+La validación final obtuvo los siguientes resultados:
+
+- 44 pruebas automatizadas aprobadas.
+- 100 % de cobertura.
+- Ruff sin errores.
+- Mypy sin errores.
+- Ejecución automática de toda la suite mediante `python -m pytest -q`.
+- Estrategias de publicación separadas mediante `AlertStrategy`.
+- Coordinación de las salidas mediante `AlertManager`.
+- Desarrollo y revisión de los cambios mediante Pull Requests.
 
 ## Definition of Done
 

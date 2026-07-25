@@ -41,3 +41,23 @@ Una historia de usuario se considera terminada únicamente cuando cumple todos l
 - [ ] Se abrió un Pull Request hacia `main`.
 - [ ] Todas las comprobaciones se ejecutaron antes del merge.
 - [ ] Los cambios fueron fusionados en `main`.
+
+
+## Evidencia de cumplimiento — Sprint 1
+
+| Criterio | Evidencia | Estado |
+|---|---|---|
+| Los criterios de aceptación están representados mediante pruebas | Pruebas automatizadas en `semana2/tests` y `semana2/eval1/tests` | Cumplido |
+| Existe evidencia de RED, GREEN y REFACTOR | Commits separados y Pull Requests del desarrollo de las historias | Cumplido |
+| Todas las pruebas están aprobadas | `python -m pytest -q`: 44 pruebas aprobadas | Cumplido |
+| La cobertura es igual o superior al 80 % | Cobertura final: 100 % | Cumplido |
+| Ruff finaliza sin errores | `ruff check semana2` | Cumplido |
+| Mypy finaliza sin errores | `mypy semana2` | Cumplido |
+| El código mantiene responsabilidades separadas | Uso de `AlertStrategy`, `ConsoleAlertStrategy`, `FileAlertStrategy` y `AlertManager` | Cumplido |
+| Las decisiones relacionadas con IA están documentadas | Entradas correspondientes en `AI_LOG.md` | Cumplido |
+| Los cambios fueron revisados antes de fusionarse | Pull Requests utilizados durante el Sprint | Cumplido |
+| El incremento se encuentra integrado en `main` | Validación final realizada sobre la rama actualizada | Cumplido |
+
+## Resultado
+
+El Sprint 1 cumple con la Definition of Done establecida. Las siete historias seleccionadas pueden considerarse terminadas.
