@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from datetime import datetime
 
-from semana2.eval1.anomaly_detector import Anomaly, AnalysisResult
+from semana2.eval1.anomaly_detector import AnalysisResult, Anomaly
 from semana2.eval1.readings import SensorReading
 
 
@@ -17,8 +17,8 @@ class AnomalyAlert:
 class AlertGenerator:
     """Genera una alerta cuando una lectura contiene anomalías."""
 
+    @staticmethod
     def create(
-        self,
         reading: SensorReading,
         analysis: AnalysisResult,
     ) -> AnomalyAlert | None:
