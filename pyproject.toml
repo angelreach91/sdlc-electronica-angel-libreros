@@ -1,5 +1,5 @@
 [tool.pytest.ini_options]
-testpaths = ["semana2/tests"]
+testpaths = ["semana2"]
 addopts = [
     "--cov=semana2",
     "--cov-report=term-missing",
