@@ -1,7 +1,7 @@
 [tool.pytest.ini_options]
-testpaths = ["semana2"]
+testpaths = ["tests"]
 addopts = [
-    "--cov=semana2",
+    "--cov=app",
     "--cov-report=term-missing",
     "--cov-fail-under=80",
 ]
