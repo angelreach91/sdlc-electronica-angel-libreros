@@ -1437,19 +1437,19 @@ El ciclo TDD permitió definir el comportamiento esperado antes de implementar e
 
 La revisión del estado de Git también permitió evitar que modificaciones accidentales de otros archivos se incorporaran al historial de `US-07`. Las propuestas de la IA fueron revisadas antes de aplicarse y solo se conservaron los cambios relacionados con la historia.
 
-# Semana 3 — Desarrollo de una API REST con FastAPI
+## Semana 3 — Desarrollo de una API REST con FastAPI
 
-## Lunes — Creación de la estructura inicial y primeros endpoints de SensorHub
+### Lunes — Creación de la estructura inicial y primeros endpoints de SensorHub
 
-### Objetivo
+#### Objetivo
 
 Crear la estructura inicial del proyecto SensorHub y desarrollar una primera versión funcional de su API REST. La actividad se realizó con base en los módulos de FastAPI estudiados durante el lunes, considerando la organización del proyecto, el uso de modelos Pydantic, la creación de endpoints y la utilización de códigos de estado HTTP.
 
-### Herramienta utilizada
+#### Herramienta utilizada
 
 Codex.
 
-### Prompt utilizado
+#### Prompt utilizado
 
 > Revisa el repositorio actual y ayúdame a crear la estructura inicial de SensorHub con base en los contenidos estudiados en los módulos del curso de FastAPI correspondientes al lunes.
 >
@@ -1457,7 +1457,7 @@ Codex.
 >
 > Mantén la implementación sencilla y limitada al alcance de esta actividad. No agregues todavía persistencia, SQLAlchemy, CRUD completo ni una separación avanzada por capas. Al finalizar, verifica el funcionamiento mediante Ruff, mypy, Uvicorn y solicitudes reales. Explica los cambios realizados para que el código pueda ser revisado y comprendido antes de aceptarlo.
 
-### Propuesta de la IA
+#### Propuesta de la IA
 
 Codex ayudó a establecer la estructura inicial de SensorHub tomando como referencia la organización presentada en el curso de FastAPI. Esta estructura contempla el paquete principal `app` y directorios destinados a los modelos, esquemas, repositorios, servicios y routers que se utilizarán conforme avance el desarrollo del proyecto.
 
@@ -1467,7 +1467,7 @@ También implementó el endpoint `GET /health`, utilizado para comprobar que la 
 
 En `requirements.txt`, Codex agregó únicamente las dependencias directas necesarias para esta primera versión: FastAPI, Pydantic y Uvicorn.
 
-### Decisión tomada
+#### Decisión tomada
 
 Se decidió utilizar la estructura propuesta por Codex porque corresponde a la organización estudiada en los módulos del curso y permite preparar el proyecto para las siguientes actividades de la Semana 3.
 
@@ -1475,7 +1475,7 @@ La implementación no fue aceptada únicamente por haber sido generada por la IA
 
 También se comprobó el recorrido de una solicitud enviada a `POST /readings`, desde la validación del JSON hasta la construcción de la respuesta. De esta manera, solamente se aceptó el código después de comprender su funcionamiento y verificar que respetara el alcance establecido.
 
-### Cambios realizados
+#### Cambios realizados
 
 - Se creó la estructura inicial de `app` con base en la organización estudiada en el curso de FastAPI.
 - Se configuró la aplicación FastAPI con el título `SensorHub`.
@@ -1492,8 +1492,81 @@ También se comprobó el recorrido de una solicitud enviada a `POST /readings`, 
 - Se probó una humedad igual a 101 y se obtuvo `422`.
 - Se ejecutaron Ruff, mypy y `git diff --check` sin encontrar errores.
 
-### Justificación
+#### Justificación
 
 Codex se utilizó como apoyo para proponer la estructura inicial y transformar los conceptos estudiados en el curso de FastAPI en una implementación funcional. Su participación permitió construir y verificar la base de SensorHub, pero cada elemento generado fue revisado antes de aceptarse.
 
 El uso de la IA no sustituyó el proceso de aprendizaje. Se analizó el código, se comprendió la función de sus componentes y se realizaron pruebas manuales para confirmar su comportamiento. La implementación se mantuvo sencilla porque la persistencia, SQLAlchemy y la separación completa por capas serán incorporadas gradualmente durante las siguientes actividades.
+
+### Martes – Implementación de persistencia con SQLAlchemy 2.x
+
+#### Objetivo
+
+Incorporar persistencia de datos a SensorHub mediante SQLAlchemy 2.x y SQLite. La actividad consistió en configurar la conexión con la base de datos, definir el modelo ORM de una lectura, crear el esquema de manera reproducible y comprobar mediante una prueba automatizada que una lectura puede almacenarse y recuperarse correctamente.
+
+#### Herramienta utilizada
+
+Codex.
+
+#### Prompt utilizado
+
+> Ayúdame a implementar la persistencia de SensorHub con SQLAlchemy 2.x, aplicando al proyecto los conceptos estudiados durante el martes. Quiero que la configuración, el modelo ORM, la creación de las tablas y la comprobación de la persistencia queden guardados como código permanente.
+>
+> La implementación debe utilizar SQLite, una clase base declarativa, un `Engine` y una fábrica de sesiones. El modelo debe representar las lecturas recibidas por SensorHub e incluir el identificador del sensor, la temperatura, la humedad y la fecha de recepción.
+>
+> También necesito una prueba automatizada que guarde una lectura, cierre la sesión y posteriormente la recupere desde una nueva sesión. Mantén la actividad limitada a persistencia; todavía no agregues repositorios, servicios ni la integración con los endpoints de FastAPI. Revisa el código generado para evitar errores de Pylance y comprueba su funcionamiento antes de preparar el commit.
+
+#### Propuesta de la IA
+
+Inicialmente, Codex guio una revisión práctica del Quick Start de SQLAlchemy mediante bloques de Python ejecutados desde Bash. Con ellos se comprobaron las operaciones básicas del ORM: creación de tablas, inserción, consulta, modificación y eliminación de registros.
+
+Después de revisar el resultado, se identificó que esas operaciones habían servido para comprender SQLAlchemy, pero la mayor parte del trabajo solamente existía como comandos temporales de terminal. Por esta razón, se decidió descartar los cambios iniciales y reiniciar la actividad desde el último commit limpio, procurando que la persistencia quedara implementada como parte permanente de SensorHub.
+
+Codex propuso agregar SQLAlchemy 2.x a las dependencias y configurar en `app/db.py` la dirección de la base SQLite, el `Engine`, la clase declarativa `Base` y la fábrica de sesiones `SessionLocal`. La configuración incluyó las opciones necesarias para utilizar SQLite y controlar el comportamiento de las sesiones.
+
+También propuso crear el modelo ORM `Reading` mediante el sistema de tipado de SQLAlchemy 2.x con `Mapped` y `mapped_column`. El modelo representa la tabla `readings` e incluye una clave primaria, el identificador del sensor, la temperatura, la humedad y la fecha de recepción. El identificador del sensor se definió como una columna indexada para facilitar futuras búsquedas.
+
+Para que la creación del esquema no dependiera de instrucciones temporales, se creó `app/init_db.py`. Este módulo permite generar las tablas registradas ejecutando `python -m app.init_db`.
+
+Finalmente, Codex propuso una prueba automatizada de persistencia. La prueba crea una base SQLite temporal, abre una sesión, almacena una lectura y confirma la transacción. Después abre una sesión diferente y recupera el registro mediante una consulta `SELECT`, verificando que todos sus valores se conservaron.
+
+#### Decisión tomada
+
+Se decidió conservar la estructura propuesta porque separa la configuración de la base de datos, la definición del modelo y la inicialización del esquema. Además, deja preparada una fábrica de sesiones que podrá utilizarse posteriormente desde las capas de repositorio y servicio.
+
+No se conectó directamente el endpoint `POST /readings` con SQLAlchemy, ya que hacerlo durante esta actividad habría mezclado la lógica de FastAPI con el acceso a datos. La integración se realizará posteriormente, después de desarrollar las capas correspondientes.
+
+Durante la implementación se revisó cada componente antes de aceptarlo. Se estudió la relación entre `Base`, `Engine`, `SessionLocal` y el modelo `Reading`, así como el recorrido de una transacción desde `session.add()` hasta `session.commit()`.
+
+También se corrigieron dos propuestas para mantener el código limpio. En `app/init_db.py` se evitó silenciar una advertencia por importación no utilizada y se utilizó explícitamente `Reading.metadata`. En la prueba se agregó el tipo `Path` al fixture `tmp_path`, eliminando los avisos de Pylance sin recurrir a comentarios de exclusión.
+
+#### Cambios realizados
+
+- Se agregó `sqlalchemy==2.0.51` a `requirements.txt`.
+- Se configuró `DATABASE_URL` para utilizar la base local `sensorhub.db`.
+- Se creó el `Engine` de SQLAlchemy para SQLite.
+- Se definió la clase declarativa `Base`.
+- Se creó la fábrica de sesiones `SessionLocal`.
+- Se creó el paquete `app/models`.
+- Se implementó el modelo ORM `Reading`.
+- Se definió la tabla `readings` con sus columnas y tipos correspondientes.
+- Se configuró `sensor_id` como una columna indexada.
+- Se implementó una representación legible del modelo mediante `__repr__`.
+- Se creó `app/init_db.py` para inicializar el esquema de manera reproducible.
+- Se agregaron los archivos locales de SQLite a `.gitignore`.
+- Se generó localmente `sensorhub.db` y se comprobó que Git no la registrara.
+- Se creó `tests/test_reading_persistence.py`.
+- La prueba utiliza una base SQLite temporal para no modificar la base principal.
+- Se comprobó que una lectura permanece almacenada después de cerrar la primera sesión.
+- Se verificó la recuperación de la lectura desde una nueva sesión.
+- Se corrigieron los avisos de Pylance mediante tipado y uso explícito de los elementos importados.
+- Se verificaron la sintaxis, el análisis estático y el tipado de los archivos involucrados.
+- La prueba aislada de persistencia finalizó correctamente con `1 passed`.
+
+#### Justificación
+
+Codex se utilizó como apoyo para trasladar los conceptos del Quick Start de SQLAlchemy 2.x a la estructura real de SensorHub. La primera práctica en Bash permitió comprender el funcionamiento del ORM, pero su resultado no era suficiente como implementación permanente. La revisión posterior ayudó a reconocer esta limitación y a reconstruir la actividad con archivos reutilizables y una prueba automatizada.
+
+El uso de una base temporal en la prueba permite demostrar persistencia real sin modificar `sensorhub.db` ni dejar archivos adicionales dentro del repositorio. Abrir una segunda sesión después del `commit` confirma que el registro no solamente permanecía en la memoria de la primera sesión, sino que fue almacenado efectivamente en SQLite.
+
+La participación de la IA no sustituyó la comprensión del proceso. Se revisaron las propuestas, se cuestionaron las decisiones que solamente silenciaban advertencias y se modificó la estructura cuando fue necesario. Como resultado, SensorHub cuenta ahora con la base de persistencia requerida para continuar posteriormente con repositorios, servicios e integración con FastAPI, sin adelantar responsabilidades correspondientes a los siguientes días.
