@@ -216,3 +216,9 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# SQLite
+sensorhub.db
+sensorhub.db-journal
+sensorhub.db-shm
+sensorhub.db-wal
