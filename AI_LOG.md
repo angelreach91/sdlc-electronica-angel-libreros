@@ -1436,3 +1436,64 @@ Al finalizar, las treinta y ocho pruebas de la Semana 2 continuaron pasando y la
 El ciclo TDD permitió definir el comportamiento esperado antes de implementar el publicador. La fase GREEN incorporó únicamente las operaciones necesarias para satisfacer los criterios de aceptación. Posteriormente, REFACTOR separó la serialización, el almacenamiento y la coordinación general sin modificar el comportamiento verificado por las pruebas.
 
 La revisión del estado de Git también permitió evitar que modificaciones accidentales de otros archivos se incorporaran al historial de `US-07`. Las propuestas de la IA fueron revisadas antes de aplicarse y solo se conservaron los cambios relacionados con la historia.
+
+# Semana 3 — Desarrollo de una API REST con FastAPI
+
+## Lunes — Creación de la estructura inicial y primeros endpoints de SensorHub
+
+### Objetivo
+
+Crear la estructura inicial del proyecto SensorHub y desarrollar una primera versión funcional de su API REST. La actividad se realizó con base en los módulos de FastAPI estudiados durante el lunes, considerando la organización del proyecto, el uso de modelos Pydantic, la creación de endpoints y la utilización de códigos de estado HTTP.
+
+### Herramienta utilizada
+
+Codex.
+
+### Prompt utilizado
+
+> Revisa el repositorio actual y ayúdame a crear la estructura inicial de SensorHub con base en los contenidos estudiados en los módulos del curso de FastAPI correspondientes al lunes.
+>
+> Después, implementa una primera versión funcional de la API con un endpoint `GET /health` y un endpoint `POST /readings`. Utiliza modelos Pydantic para validar los datos de entrada y definir la respuesta. La lectura debe incluir un identificador de sensor, temperatura y humedad; además, el servidor debe generar la fecha y hora de recepción en UTC.
+>
+> Mantén la implementación sencilla y limitada al alcance de esta actividad. No agregues todavía persistencia, SQLAlchemy, CRUD completo ni una separación avanzada por capas. Al finalizar, verifica el funcionamiento mediante Ruff, mypy, Uvicorn y solicitudes reales. Explica los cambios realizados para que el código pueda ser revisado y comprendido antes de aceptarlo.
+
+### Propuesta de la IA
+
+Codex ayudó a establecer la estructura inicial de SensorHub tomando como referencia la organización presentada en el curso de FastAPI. Esta estructura contempla el paquete principal `app` y directorios destinados a los modelos, esquemas, repositorios, servicios y routers que se utilizarán conforme avance el desarrollo del proyecto.
+
+Para la actividad del lunes, Codex mantuvo la implementación principal en `app/main.py`, ya que todavía no era necesario utilizar todas las capas disponibles. En este archivo configuró una aplicación FastAPI con el título `SensorHub` y creó los modelos Pydantic `ReadingInput` y `ReadingResponse`.
+
+También implementó el endpoint `GET /health`, utilizado para comprobar que la API se encuentra funcionando, y el endpoint `POST /readings`, encargado de recibir y validar lecturas de temperatura y humedad. La propuesta incluyó la validación de un identificador de sensor no vacío, una humedad entre 0 y 100 y la generación automática de la fecha y hora de recepción en UTC.
+
+En `requirements.txt`, Codex agregó únicamente las dependencias directas necesarias para esta primera versión: FastAPI, Pydantic y Uvicorn.
+
+### Decisión tomada
+
+Se decidió utilizar la estructura propuesta por Codex porque corresponde a la organización estudiada en los módulos del curso y permite preparar el proyecto para las siguientes actividades de la Semana 3.
+
+La implementación no fue aceptada únicamente por haber sido generada por la IA. Antes de conservarla, se revisó el contenido de `app/main.py` y se estudió el funcionamiento de las importaciones, los modelos Pydantic, las restricciones definidas mediante `Field`, los decoradores de FastAPI, los códigos HTTP y la generación de fechas en UTC.
+
+También se comprobó el recorrido de una solicitud enviada a `POST /readings`, desde la validación del JSON hasta la construcción de la respuesta. De esta manera, solamente se aceptó el código después de comprender su funcionamiento y verificar que respetara el alcance establecido.
+
+### Cambios realizados
+
+- Se creó la estructura inicial de `app` con base en la organización estudiada en el curso de FastAPI.
+- Se configuró la aplicación FastAPI con el título `SensorHub`.
+- Se creó el modelo de entrada `ReadingInput`.
+- Se creó el modelo de respuesta `ReadingResponse`.
+- Se implementó `GET /health` con respuesta `200 OK`.
+- Se implementó `POST /readings` con respuesta `201 Created`.
+- Se validó que `sensor_id` no sea una cadena vacía.
+- Se validó que la humedad se encuentre entre 0 y 100.
+- Se generó `received_at` mediante una fecha y hora UTC.
+- Se agregaron FastAPI, Pydantic y Uvicorn a `requirements.txt`.
+- Se comprobó manualmente la documentación interactiva disponible en `/docs`.
+- Se probó una lectura válida y se obtuvo `201 Created`.
+- Se probó una humedad igual a 101 y se obtuvo `422`.
+- Se ejecutaron Ruff, mypy y `git diff --check` sin encontrar errores.
+
+### Justificación
+
+Codex se utilizó como apoyo para proponer la estructura inicial y transformar los conceptos estudiados en el curso de FastAPI en una implementación funcional. Su participación permitió construir y verificar la base de SensorHub, pero cada elemento generado fue revisado antes de aceptarse.
+
+El uso de la IA no sustituyó el proceso de aprendizaje. Se analizó el código, se comprendió la función de sus componentes y se realizaron pruebas manuales para confirmar su comportamiento. La implementación se mantuvo sencilla porque la persistencia, SQLAlchemy y la separación completa por capas serán incorporadas gradualmente durante las siguientes actividades.
