@@ -1570,3 +1570,122 @@ Codex se utilizó como apoyo para trasladar los conceptos del Quick Start de SQL
 El uso de una base temporal en la prueba permite demostrar persistencia real sin modificar `sensorhub.db` ni dejar archivos adicionales dentro del repositorio. Abrir una segunda sesión después del `commit` confirma que el registro no solamente permanecía en la memoria de la primera sesión, sino que fue almacenado efectivamente en SQLite.
 
 La participación de la IA no sustituyó la comprensión del proceso. Se revisaron las propuestas, se cuestionaron las decisiones que solamente silenciaban advertencias y se modificó la estructura cuando fue necesario. Como resultado, SensorHub cuenta ahora con la base de persistencia requerida para continuar posteriormente con repositorios, servicios e integración con FastAPI, sin adelantar responsabilidades correspondientes a los siguientes días.
+
+### Miércoles – Implementación del repositorio y servicio de lecturas
+
+#### Objetivo
+
+Desarrollar las capas de repositorio y servicio de SensorHub para separar el acceso a la base de datos de las reglas de negocio. La actividad consistió en implementar el almacenamiento y la consulta de lecturas mediante SQLAlchemy, validar los datos antes de guardarlos y comprobar cada responsabilidad con pruebas independientes.
+
+La implementación debía aprovechar la persistencia desarrollada el martes, pero sin conectarla todavía con los endpoints de FastAPI, ya que esa integración corresponde a una actividad posterior.
+
+#### Herramienta utilizada
+
+Codex.
+
+#### Prompt utilizado
+
+> Continuemos con la actividad del miércoles. Quiero implementar el repositorio y el servicio de lecturas utilizando la persistencia desarrollada el martes. Guíame por archivo y mantén separadas las reglas de negocio del acceso a SQLite. Todavía no conectes estas capas con los endpoints de FastAPI.
+>
+> Primero necesito comprobar las reglas del servicio mediante pruebas aisladas. Después quiero verificar el repositorio real con una base SQLite temporal, comprobando que una lectura permanezca almacenada y que las consultas filtren correctamente por sensor.
+>
+> Si durante las verificaciones aparecen errores de tipado o advertencias de Pylance, ayúdame a entender su causa y a corregirlos sin cambiar innecesariamente la lógica del programa. Antes de preparar el commit, explícame detalladamente qué función cumple cada archivo y cómo se relacionan el servicio, el repositorio, SQLAlchemy y las pruebas.
+
+#### Propuesta de la IA
+
+Codex propuso organizar la funcionalidad en dos capas principales. La primera sería una capa de repositorio encargada exclusivamente de comunicarse con SQLAlchemy, mientras que la segunda contendría las reglas que debe cumplir una lectura antes de ser almacenada.
+
+Para establecer la comunicación entre ambas capas, se propuso definir `ReadingRepository` mediante un `Protocol`. Este contrato especifica que cualquier repositorio utilizado por el servicio debe ofrecer una operación para agregar lecturas y otra para consultarlas mediante el identificador del sensor.
+
+La implementación real del contrato se realizó mediante `SQLAlchemyReadingRepository`. Esta clase recibe una sesión de SQLAlchemy desde el exterior y utiliza el modelo ORM `Reading` creado durante la actividad del martes. Su método `add()` incorpora la lectura a la sesión, confirma la transacción y actualiza el objeto para recuperar los valores generados por SQLite, principalmente la clave primaria. También incluye un `rollback()` para restaurar la sesión si la transacción no puede completarse.
+
+Para la consulta de lecturas, Codex propuso el método `list_by_sensor()`. Este método construye una consulta con `select()`, filtra los registros cuyo `sensor_id` coincide con el solicitado y los ordena de forma ascendente mediante la fecha de recepción. El identificador de la lectura se utiliza como segundo criterio para mantener un orden estable cuando dos registros tienen la misma fecha.
+
+La segunda parte de la propuesta fue crear `ReadingService` como responsable de las reglas de negocio. El servicio recibe un objeto que cumpla el contrato `ReadingRepository`, por lo que no depende directamente de SQLAlchemy. Antes de construir una lectura, elimina los espacios exteriores del identificador del sensor y comprueba que el resultado no esté vacío. También rechaza temperaturas inferiores al cero absoluto y humedades fuera del intervalo de `0 %` a `100 %`.
+
+Codex también propuso inyectar una función de reloj en `ReadingService`. Durante la ejecución normal se utiliza la fecha actual en UTC, pero en las pruebas puede proporcionarse una fecha fija. Esto permite comprobar de manera exacta el valor de `received_at` y evita que las pruebas dependan de la hora real en que se ejecutan.
+
+Para verificar las reglas del servicio de manera aislada, se utilizó un repositorio falso que almacena las lecturas en una lista de Python. Esta implementación ofrece las mismas operaciones definidas por el `Protocol`, pero no necesita SQLAlchemy ni SQLite. De esta manera, si una prueba del servicio falla, el problema puede localizarse en sus validaciones y no en la configuración de la base de datos.
+
+Posteriormente se agregaron pruebas específicas para `SQLAlchemyReadingRepository`. Estas pruebas utilizan una base SQLite temporal proporcionada por `tmp_path`, evitando cualquier modificación en `sensorhub.db`. Una prueba guarda una lectura y abre una sesión diferente para demostrar que el registro permaneció realmente en la base de datos. La segunda guarda lecturas de distintos sensores y comprueba que la consulta devuelva solamente las correspondientes al sensor solicitado y en orden cronológico.
+
+Durante la comprobación del tipado, Mypy detectó que la función auxiliar encargada de crear el motor de prueba no indicaba su tipo de retorno. Codex explicó que la función devolvía un objeto `Engine` y propuso agregar la importación y la anotación correspondiente. Esta corrección no modificó el comportamiento del programa; únicamente completó la información de tipos requerida por el análisis estático.
+
+#### Decisión tomada
+
+Se decidió conservar la separación entre servicio y repositorio porque ambos componentes atienden responsabilidades diferentes. `ReadingService` determina si los datos recibidos cumplen las reglas del sistema, mientras que `SQLAlchemyReadingRepository` se encarga de almacenarlos y recuperarlos mediante SQLAlchemy.
+
+También se conservó `ReadingRepository` como un contrato basado en `Protocol`. Esta decisión permite que el servicio trabaje con distintas implementaciones sin conocer sus detalles internos. En la aplicación podrá utilizar el repositorio real, mientras que en las pruebas puede utilizar una versión falsa almacenada en memoria.
+
+Se aceptó recibir la sesión de SQLAlchemy mediante el constructor del repositorio en lugar de crearla internamente. De esta forma se controla qué sesión utiliza cada instancia y se facilita su integración posterior con el sistema de dependencias de FastAPI.
+
+En el servicio se mantuvieron las siguientes reglas:
+
+- El identificador del sensor se normaliza eliminando espacios al principio y al final.
+- Un identificador vacío se considera inválido.
+- No se permiten temperaturas inferiores a `-273.15 °C`.
+- La humedad debe encontrarse entre `0 %` y `100 %`, incluyendo ambos límites.
+- La fecha de recepción se obtiene mediante una función de reloj inyectable.
+- Las lecturas válidas se entregan al repositorio después de completar las validaciones.
+- Las lecturas inválidas se rechazan antes de llegar a la capa de persistencia.
+
+Se decidió ordenar las consultas desde la lectura más antigua hasta la más reciente porque este orden facilita la interpretación posterior del historial de cada sensor. También se mantuvo el identificador de la lectura como criterio secundario para evitar resultados ambiguos cuando varias lecturas tienen la misma fecha.
+
+Las propuestas se comprobaron de forma progresiva. Primero se probaron las reglas del servicio con el repositorio falso y después se verificó el repositorio real con SQLite temporal. Antes de preparar el commit se solicitó una explicación completa de la arquitectura, el flujo de una lectura, el funcionamiento de las transacciones y la diferencia entre ambos tipos de pruebas.
+
+No se modificaron todavía los endpoints de FastAPI. Integrarlos durante esta actividad habría mezclado el desarrollo de las capas internas con la exposición de la API. La conexión mediante dependencias se realizará después de comprobar que el servicio y el repositorio funcionan correctamente por separado.
+
+#### Cambios realizados
+
+- Se creó `app/repositories/reading_repository.py`.
+- Se definió `ReadingRepository` mediante un `Protocol`.
+- Se establecieron las operaciones `add()` y `list_by_sensor()`.
+- Se implementó `SQLAlchemyReadingRepository`.
+- El repositorio recibe una `Session` de SQLAlchemy mediante su constructor.
+- Se implementó el almacenamiento de lecturas mediante `session.add()`.
+- Se agregó `session.commit()` para confirmar las transacciones.
+- Se utilizó `session.refresh()` para actualizar la lectura con su identificador generado.
+- Se agregó `session.rollback()` para recuperar la sesión en caso de error.
+- Se implementó una consulta con `select()` para filtrar lecturas por `sensor_id`.
+- Los resultados se ordenan por `received_at` y, como segundo criterio, por `id`.
+- Se creó `app/services/reading_service.py`.
+- Se implementó `ReadingService` con inyección del repositorio.
+- Se agregó una función de reloj configurable con fecha UTC.
+- Se normaliza el identificador del sensor mediante `strip()`.
+- Se rechazan identificadores vacíos.
+- Se rechazan temperaturas inferiores al cero absoluto.
+- Se validan humedades dentro del intervalo permitido.
+- Se implementó la creación de objetos `Reading` después de completar las validaciones.
+- Se agregó la consulta de lecturas por sensor desde el servicio.
+- Se creó `tests/test_reading_service.py`.
+- Se implementó `FakeReadingRepository` para probar el servicio sin SQLite.
+- Se agregó un reloj fijo para obtener resultados deterministas.
+- Se comprobó el almacenamiento de una lectura válida.
+- Se verificó la normalización del identificador del sensor.
+- Se comprobaron los casos de identificador vacío, temperatura inválida y humedad fuera de rango.
+- Se verificó que las lecturas inválidas no lleguen al repositorio.
+- Se comprobó la consulta de lecturas correspondientes a un sensor.
+- Se creó `tests/test_reading_repository.py`.
+- Se configuró una base SQLite temporal para las pruebas del repositorio.
+- Se verificó que una lectura permanezca almacenada al abrir una sesión diferente.
+- Se comprobó el filtrado de registros por identificador del sensor.
+- Se verificó el orden cronológico de los resultados.
+- Se agregó `Engine` como tipo de retorno de la función auxiliar que crea el motor de prueba.
+- Se realizaron las comprobaciones de pruebas, formato y tipado de los archivos involucrados.
+- Aprobaron seis casos correspondientes al servicio y dos casos correspondientes al repositorio.
+
+#### Justificación
+
+La separación entre servicio y repositorio evita que las validaciones del sistema queden mezcladas con consultas, sesiones y transacciones de SQLAlchemy. Esto permite modificar las reglas de negocio sin alterar el acceso a la base de datos y cambiar la implementación de persistencia sin reescribir el servicio.
+
+El uso de `Protocol` reduce el acoplamiento porque `ReadingService` depende de las operaciones que necesita y no de una clase concreta. El repositorio falso demuestra esta ventaja, ya que puede sustituir al repositorio de SQLAlchemy durante las pruebas sin realizar cambios en el servicio.
+
+La inyección del reloj cumple una función similar. En lugar de depender directamente de la hora del sistema, el servicio recibe una función que proporciona la fecha. Durante la ejecución normal se utiliza UTC, mientras que en las pruebas se utiliza una fecha conocida. Esto hace que los resultados sean repetibles y fáciles de comprobar.
+
+Las pruebas del servicio y del repositorio se mantuvieron separadas porque buscan errores diferentes. Las primeras verifican la normalización, las validaciones y la delegación del almacenamiento. Las segundas comprueban que las transacciones y consultas funcionen realmente con SQLAlchemy y SQLite. La base temporal permite realizar estas comprobaciones sin modificar la base principal ni generar archivos permanentes dentro del repositorio.
+
+Codex se utilizó para orientar la estructura, proponer fragmentos de implementación, explicar los conceptos involucrados y corregir un problema puntual de tipado. Las propuestas se integraron después de ejecutar las pruebas y revisar el funcionamiento de cada componente. La explicación solicitada antes del commit permitió comprender el recorrido completo de una lectura desde que entra al servicio hasta que es almacenada y consultada mediante el repositorio.
+
+La participación de la IA no sustituyó la revisión ni la comprensión del proceso. Cada componente se comprobó por separado, se analizaron los resultados de las pruebas y se corrigieron los problemas encontrados antes de conservar la implementación.
+
+Como resultado, SensorHub cuenta con una capa interna validada para administrar lecturas. Esta estructura deja preparado el proyecto para que, durante la siguiente actividad, FastAPI obtenga una sesión, construya el repositorio, inyecte el servicio y exponga estas operaciones mediante sus endpoints.
