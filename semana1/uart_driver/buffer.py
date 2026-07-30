@@ -2,7 +2,6 @@ from collections import deque
 from threading import Lock
 from typing import Generic, TypeVar
 
-
 T = TypeVar("T")
 
 
