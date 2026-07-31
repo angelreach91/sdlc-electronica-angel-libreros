@@ -1689,3 +1689,135 @@ Codex se utilizó para orientar la estructura, proponer fragmentos de implementa
 La participación de la IA no sustituyó la revisión ni la comprensión del proceso. Cada componente se comprobó por separado, se analizaron los resultados de las pruebas y se corrigieron los problemas encontrados antes de conservar la implementación.
 
 Como resultado, SensorHub cuenta con una capa interna validada para administrar lecturas. Esta estructura deja preparado el proyecto para que, durante la siguiente actividad, FastAPI obtenga una sesión, construya el repositorio, inyecte el servicio y exponga estas operaciones mediante sus endpoints.
+
+### Jueves – Integración de las capas y API REST completa
+
+#### Objetivo
+
+Conectar las capas internas de SensorHub con FastAPI mediante inyección de dependencias y completar las operaciones REST necesarias para administrar lecturas almacenadas en SQLite.
+
+La actividad debía integrar los esquemas, el servicio y el repositorio sin colocar reglas de negocio ni consultas de SQLAlchemy directamente dentro de los endpoints. También debía incorporar paginación, filtros por fecha y respuestas HTTP básicas, manteniendo el desarrollo dentro del estándar esperado y sin implementar las extensiones correspondientes al nivel de alto potencial.
+
+#### Herramienta utilizada
+
+Codex
+
+#### Prompt utilizado
+
+> Continuemos con la actividad del jueves de SensorHub. Primero revisa todos los archivos existentes y confirma qué corresponde al trabajo previo y qué falta desarrollar.
+>
+> Guíame indicando siempre el nombre exacto del archivo que debo crear o modificar y proporciona el contenido completo. Necesito conectar FastAPI con el servicio, el repositorio y SQLite mediante inyección de dependencias.
+>
+> La API debe incluir las operaciones para crear, listar, consultar, actualizar y eliminar lecturas. También debe admitir paginación y filtros por fecha. Mantén el trabajo dentro del estándar esperado y no implementes extensiones de alto potencial ni un manejo exhaustivo de errores.
+>
+> Comprueba el funcionamiento mediante pruebas, Ruff, Mypy, SQLite y Swagger. Los commits se realizarán hasta completar toda la actividad.
+
+#### Propuesta de la IA
+
+La IA comenzó revisando el estado completo de la aplicación, las pruebas existentes y los cambios locales. Esta revisión permitió confirmar que la persistencia, el modelo ORM, el repositorio y el servicio desarrollados durante los días anteriores funcionaban como base para la integración.
+
+Se propuso crear `app/dependencies.py` para administrar el ciclo de vida de las sesiones de SQLAlchemy. La función `get_session()` abre una sesión mediante `SessionLocal`, la proporciona durante la petición y permite cerrarla al finalizar. La función `get_reading_service()` utiliza la sesión para construir un `SQLAlchemyReadingRepository` y posteriormente un `ReadingService`.
+
+También se propuso crear `app/schemas/reading.py` con tres modelos Pydantic. `ReadingCreate` representa los datos necesarios para registrar una lectura, `ReadingUpdate` permite recibir cambios parciales y `ReadingResponse` transforma los modelos ORM en respuestas de la API mediante `from_attributes=True`.
+
+El repositorio se amplió para incorporar las operaciones necesarias para el CRUD. Además de almacenar y listar lecturas, se agregaron la consulta por identificador, la actualización y la eliminación. La consulta por sensor se extendió con `limit`, `offset`, `from_date` y `to_date`.
+
+El servicio también fue ampliado para coordinar estas operaciones y mantener las reglas de negocio fuera del router. Se centralizó la normalización del identificador del sensor, la validación de temperatura y humedad, la comprobación de los parámetros de paginación, el orden correcto de las fechas y la validación de identificadores positivos.
+
+Inicialmente, los endpoints HTTP se desarrollaron mediante ciclos TDD. Para cada operación se agregó primero una prueba en `tests/test_readings_api.py`. Las pruebas sustituyeron la dependencia real mediante `app.dependency_overrides`, utilizando un servicio falso para comprobar únicamente la capa HTTP.
+
+Los resultados RED fueron `404 Not Found` cuando la ruta todavía no existía y `405 Method Not Allowed` cuando la ruta existía para otro método HTTP. Después se implementó el código mínimo necesario para obtener el GREEN.
+
+Los endpoints incorporados fueron:
+
+- `POST /sensors/{sensor_id}/readings`.
+- `GET /sensors/{sensor_id}/readings`.
+- `GET /readings/{reading_id}`.
+- `PATCH /readings/{reading_id}`.
+- `DELETE /readings/{reading_id}`.
+
+Durante el refactor se creó el alias tipado `ReadingServiceDependency` para evitar repetir en cada endpoint la declaración completa de `Annotated`, `ReadingService`, `Depends` y `get_reading_service`.
+
+Posteriormente se decidió dejar de aplicar un ciclo TDD individual para cada ajuste restante, ya que los comportamientos principales ya estaban cubiertos y era necesario aprovechar mejor el tiempo disponible. Las pruebas creadas se conservaron como protección y los cambios posteriores se realizaron mediante implementación, explicación y verificación.
+
+La IA propuso agregar un manejo HTTP básico dentro del router. Los errores de negocio representados mediante `ValueError` se traducen a `400 Bad Request`, mientras que los resultados inexistentes se convierten en `404 Not Found`. La validación estructural de cuerpos y parámetros continúa siendo responsabilidad automática de FastAPI y Pydantic mediante respuestas `422`.
+
+Se evitó implementar una jerarquía de excepciones de dominio, manejadores globales, conflictos `409` artificiales y pruebas exhaustivas de cada combinación de errores, porque esas características pertenecen a una extensión superior al estándar esperado.
+
+También se revisó el uso de `PATCH`. Se decidió conservarlo porque aparece en la guía y representa correctamente una actualización parcial. El esquema `ReadingUpdate` permite enviar solamente temperatura o humedad, y el servicio modifica únicamente los campos proporcionados.
+
+Durante las pruebas con `TestClient` apareció una advertencia de Starlette y una cascada de tipos desconocidos en Pylance. La revisión confirmó que este problema no estaba relacionado con el uso de SQLAlchemy 2.x ni con `Mapped` y `mapped_column`.
+
+El entorno conservó `httpx`, tal como indica la guía, y se agregó `httpx2`, utilizado por la versión instalada de Starlette. Se comprobó mediante la jerarquía de clases que `starlette.testclient.TestClient` hereda realmente de `httpx2.Client`.
+
+Finalmente, la aplicación se verificó con la base SQLite real y desde Swagger. Se inicializó el esquema, se levantó Uvicorn y se comprobaron las operaciones de creación, consulta, listado, actualización y eliminación. También se confirmó que los cambios se almacenaban realmente en `sensorhub.db`.
+
+#### Decisión tomada
+
+Se decidió conservar la arquitectura separada en routers, esquemas, dependencias, servicios, repositorios y modelos porque cada componente representa una responsabilidad diferente.
+
+Los endpoints no realizan consultas SQLAlchemy directamente. Su función consiste en recibir los datos HTTP, delegar la operación en el servicio y transformar el resultado mediante los esquemas Pydantic.
+
+El servicio continúa dependiendo del contrato `ReadingRepository` y no de la implementación concreta de SQLAlchemy. Esta decisión permite utilizar el repositorio real durante la ejecución y una implementación falsa durante las pruebas.
+
+Se aceptó utilizar `Depends` para construir el servicio por petición, ya que permite controlar el ciclo de vida de la sesión y sustituir las dependencias durante las pruebas de la API.
+
+También se decidió conservar `PATCH` para actualizaciones parciales y `DELETE` con una respuesta `204 No Content`.
+
+El alcance se mantuvo dentro del estándar esperado. Solamente se agregó manejo HTTP básico y no se implementaron excepciones de dominio, manejadores globales ni una matriz exhaustiva de respuestas `400`, `404`, `409` y `422`.
+
+Se decidió realizar los commits al finalizar la actividad y no crear un commit por cada fase RED, GREEN y REFACTOR, evitando fragmentar innecesariamente el historial del repositorio.
+
+#### Cambios realizados
+
+- Se creó `app/dependencies.py`.
+- Se implementó `get_session()` para proporcionar sesiones de SQLAlchemy.
+- Se implementó `get_reading_service()` para construir el repositorio y el servicio.
+- Se creó `app/schemas/reading.py`.
+- Se implementaron `ReadingCreate`, `ReadingUpdate` y `ReadingResponse`.
+- Se amplió el contrato `ReadingRepository`.
+- Se agregó paginación con `limit` y `offset`.
+- Se agregaron filtros mediante `from_date` y `to_date`.
+- Se implementó la consulta de lecturas por identificador.
+- Se implementó la actualización de lecturas.
+- Se implementó la eliminación de lecturas.
+- Se amplió `ReadingService` con las operaciones CRUD.
+- Se centralizaron las validaciones internas del servicio.
+- Se ampliaron las pruebas unitarias de `ReadingService`.
+- Se creó `app/routers/readings.py`.
+- Se implementó `POST /sensors/{sensor_id}/readings`.
+- Se implementó `GET /sensors/{sensor_id}/readings`.
+- Se implementó `GET /readings/{reading_id}`.
+- Se implementó `PATCH /readings/{reading_id}`.
+- Se implementó `DELETE /readings/{reading_id}`.
+- Se agregó el alias tipado `ReadingServiceDependency`.
+- Se agregó el manejo básico de respuestas `400` y `404`.
+- Se conservaron las validaciones automáticas `422` de FastAPI.
+- Se creó `tests/test_readings_api.py`.
+- Se utilizaron dependencias sustituidas mediante `dependency_overrides`.
+- Se comprobaron los cinco endpoints mediante un servicio falso.
+- Se reemplazó el endpoint provisional de `app/main.py`.
+- `app/main.py` quedó encargado de crear la aplicación y registrar el router.
+- Se conservó `GET /health`.
+- Se mantuvo `httpx` por compatibilidad con la guía.
+- Se agregó `httpx2` por compatibilidad con la versión instalada de Starlette.
+- Se confirmó el uso de `httpx2.Client` desde `TestClient`.
+- Se verificaron las pruebas automatizadas.
+- Se ejecutaron Ruff y Mypy sin errores.
+- Se inicializó la base SQLite real.
+- Se verificaron los endpoints desde Swagger.
+- Se comprobó la persistencia de las operaciones en `sensorhub.db`.
+- Se documentó la decisión arquitectónica en `ADR-0003`.
+
+#### Justificación
+
+La inyección de dependencias permite conectar las capas sin que los endpoints necesiten conocer cómo se construyen las sesiones, los repositorios o los servicios. Esto reduce el acoplamiento y facilita sustituir los componentes durante las pruebas.
+
+Los esquemas Pydantic mantienen separados los datos que recibe la API de los modelos utilizados por SQLAlchemy. El servicio concentra las reglas del sistema y el repositorio concentra las operaciones de persistencia.
+
+Las pruebas HTTP con un servicio falso verifican que cada endpoint reciba correctamente los datos, invoque la operación correspondiente y genere la respuesta esperada sin depender de una base de datos durante esas comprobaciones.
+
+La validación manual con Swagger y SQLite complementó las pruebas aisladas al demostrar que la cadena completa funciona realmente:
+
+```text
+Solicitud HTTP → Router → Servicio → Repositorio → SQLAlchemy → SQLite
