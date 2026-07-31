@@ -1,3 +1,5 @@
+from collections.abc import Generator
+from contextlib import contextmanager
 from datetime import datetime, timezone
 
 from fastapi.testclient import TestClient
@@ -5,18 +7,61 @@ from fastapi.testclient import TestClient
 from app.dependencies import get_reading_service
 from app.main import app
 from app.models.reading import Reading
+from app.sensor_types import SensorUnit
 
-FIXED_TIME = datetime(2026, 7, 30, 18, 0, tzinfo=timezone.utc)
-SECOND_TIME = datetime(2026, 7, 30, 19, 0, tzinfo=timezone.utc)
-RANGE_START = datetime(2026, 7, 29, 0, 0, tzinfo=timezone.utc)
-RANGE_END = datetime(2026, 7, 31, 0, 0, tzinfo=timezone.utc)
+FIXED_TIME = datetime(
+    2026,
+    7,
+    31,
+    18,
+    0,
+    tzinfo=timezone.utc,
+)
+RANGE_START = datetime(
+    2026,
+    7,
+    30,
+    0,
+    0,
+    tzinfo=timezone.utc,
+)
+RANGE_END = datetime(
+    2026,
+    8,
+    1,
+    0,
+    0,
+    tzinfo=timezone.utc,
+)
+
+
+def make_reading(
+    *,
+    reading_id: int,
+    sensor_id: str = "TEMP-01",
+    value: float = 24.5,
+    unit: str = "C",
+) -> Reading:
+    """Construye una lectura controlada para las pruebas HTTP."""
+
+    reading = Reading(
+        sensor_id=sensor_id,
+        value=value,
+        unit=unit,
+        received_at=FIXED_TIME,
+    )
+    reading.id = reading_id
+
+    return reading
 
 
 class FakeReadingService:
-    """Servicio controlado utilizado para probar únicamente la capa HTTP."""
+    """Servicio controlado utilizado para probar el router de lecturas."""
 
     def __init__(self) -> None:
-        self.create_arguments: tuple[str, float, float] | None = None
+        self.create_arguments: (
+            tuple[str, float, SensorUnit] | None
+        ) = None
         self.list_arguments: (
             tuple[
                 str,
@@ -27,33 +72,49 @@ class FakeReadingService:
             ]
             | None
         ) = None
-        self.get_arguments: int | None = None
         self.update_arguments: (
-            tuple[int, float | None, float | None] | None
+            tuple[int, float | None, SensorUnit | None] | None
         ) = None
-        self.delete_arguments: int | None = None
+
+        self.create_error: ValueError | LookupError | None = None
+        self.update_error: ValueError | LookupError | None = None
+
+        self.list_result: list[Reading] = [
+            make_reading(
+                reading_id=2,
+                value=24.5,
+            ),
+            make_reading(
+                reading_id=3,
+                value=25.0,
+            ),
+        ]
+        self.update_result: Reading | None = make_reading(
+            reading_id=7,
+            value=27.5,
+        )
 
     def create_reading(
         self,
         sensor_id: str,
-        temperature: float,
-        humidity: float,
+        value: float,
+        unit: SensorUnit,
     ) -> Reading:
         self.create_arguments = (
             sensor_id,
-            temperature,
-            humidity,
+            value,
+            unit,
         )
 
-        reading = Reading(
+        if self.create_error is not None:
+            raise self.create_error
+
+        return make_reading(
+            reading_id=1,
             sensor_id=sensor_id,
-            temperature=temperature,
-            humidity=humidity,
-            received_at=FIXED_TIME,
+            value=value,
+            unit=unit.value,
         )
-        reading.id = 1
-
-        return reading
 
     def list_by_sensor(
         self,
@@ -72,112 +133,93 @@ class FakeReadingService:
             to_date,
         )
 
-        first = Reading(
-            sensor_id=sensor_id,
-            temperature=24.5,
-            humidity=60.0,
-            received_at=FIXED_TIME,
-        )
-        first.id = 2
-
-        second = Reading(
-            sensor_id=sensor_id,
-            temperature=25.0,
-            humidity=62.0,
-            received_at=SECOND_TIME,
-        )
-        second.id = 3
-
-        return [first, second]
+        return self.list_result
 
     def get_by_id(self, reading_id: int) -> Reading | None:
-        self.get_arguments = reading_id
-
-        reading = Reading(
-            sensor_id="sensor-01",
-            temperature=26.5,
-            humidity=64.0,
-            received_at=FIXED_TIME,
-        )
-        reading.id = reading_id
-
-        return reading
+        return None
 
     def update_reading(
         self,
         reading_id: int,
         *,
-        temperature: float | None = None,
-        humidity: float | None = None,
+        value: float | None = None,
+        unit: SensorUnit | None = None,
     ) -> Reading | None:
         self.update_arguments = (
             reading_id,
-            temperature,
-            humidity,
+            value,
+            unit,
         )
 
-        reading = Reading(
-            sensor_id="sensor-01",
-            temperature=26.5 if temperature is None else temperature,
-            humidity=64.0 if humidity is None else humidity,
-            received_at=FIXED_TIME,
-        )
-        reading.id = reading_id
+        if self.update_error is not None:
+            raise self.update_error
 
-        return reading
+        return self.update_result
 
     def delete_reading(self, reading_id: int) -> bool:
-        self.delete_arguments = reading_id
-        return True
+        return False
+
+
+@contextmanager
+def reading_client(
+    service: FakeReadingService,
+) -> Generator[TestClient, None, None]:
+    """Proporciona un cliente con el servicio de lecturas sustituido."""
+
+    app.dependency_overrides[get_reading_service] = lambda: service
+
+    try:
+        with TestClient(app) as client:
+            yield client
+    finally:
+        app.dependency_overrides.pop(
+            get_reading_service,
+            None,
+        )
 
 
 def test_create_reading_returns_created_reading() -> None:
     service = FakeReadingService()
-    app.dependency_overrides[get_reading_service] = lambda: service
 
-    try:
-        client = TestClient(app)
-
+    with reading_client(service) as client:
         response = client.post(
-            "/sensors/sensor-01/readings",
+            "/sensors/TEMP-01/readings",
             json={
-                "temperature": 24.5,
-                "humidity": 60.0,
+                "value": 24.5,
+                "unit": "C",
             },
         )
-    finally:
-        app.dependency_overrides.clear()
 
     assert response.status_code == 201
 
     response_data = response.json()
 
     assert response_data["id"] == 1
-    assert response_data["sensor_id"] == "sensor-01"
-    assert response_data["temperature"] == 24.5
-    assert response_data["humidity"] == 60.0
+    assert response_data["sensor_id"] == "TEMP-01"
+    assert response_data["value"] == 24.5
+    assert response_data["unit"] == "C"
 
     received_at = datetime.fromisoformat(
-        response_data["received_at"].replace("Z", "+00:00")
+        response_data["received_at"].replace(
+            "Z",
+            "+00:00",
+        )
     )
     assert received_at == FIXED_TIME
 
     assert service.create_arguments == (
-        "sensor-01",
+        "TEMP-01",
         24.5,
-        60.0,
+        SensorUnit.CELSIUS,
     )
 
 
-def test_list_readings_returns_filtered_page() -> None:
+def test_list_readings_forwards_filters_and_pagination() -> None:
     service = FakeReadingService()
-    app.dependency_overrides[get_reading_service] = lambda: service
 
-    try:
-        client = TestClient(app)
-
+    with reading_client(service) as client:
         response = client.get(
-            "/sensors/sensor-01/readings",
+            "/sensors/TEMP-01/readings",
             params={
                 "limit": 2,
                 "offset": 1,
@@ -185,26 +227,22 @@ def test_list_readings_returns_filtered_page() -> None:
                 "to": RANGE_END.isoformat(),
             },
         )
-    finally:
-        app.dependency_overrides.clear()
 
     assert response.status_code == 200
 
     response_data = response.json()
 
-    assert len(response_data) == 2
-
-    assert response_data[0]["id"] == 2
-    assert response_data[0]["sensor_id"] == "sensor-01"
-    assert response_data[0]["temperature"] == 24.5
-    assert response_data[0]["humidity"] == 60.0
-
-    assert response_data[1]["id"] == 3
-    assert response_data[1]["temperature"] == 25.0
-    assert response_data[1]["humidity"] == 62.0
+    assert [reading["id"] for reading in response_data] == [
+        2,
+        3,
+    ]
+    assert [reading["value"] for reading in response_data] == [
+        24.5,
+        25.0,
+    ]
 
     assert service.list_arguments == (
-        "sensor-01",
+        "TEMP-01",
         2,
         1,
         RANGE_START,
@@ -212,63 +250,21 @@ def test_list_readings_returns_filtered_page() -> None:
     )
 
 
-def test_get_reading_returns_existing_reading() -> None:
+def test_update_reading_forwards_partial_change() -> None:
     service = FakeReadingService()
-    app.dependency_overrides[get_reading_service] = lambda: service
 
-    try:
-        client = TestClient(app)
-
-        response = client.get("/readings/7")
-    finally:
-        app.dependency_overrides.clear()
-
-    assert response.status_code == 200
-
-    response_data = response.json()
-
-    assert response_data["id"] == 7
-    assert response_data["sensor_id"] == "sensor-01"
-    assert response_data["temperature"] == 26.5
-    assert response_data["humidity"] == 64.0
-
-    received_at = datetime.fromisoformat(
-        response_data["received_at"].replace("Z", "+00:00")
-    )
-    assert received_at == FIXED_TIME
-
-    assert service.get_arguments == 7
-
-
-def test_update_reading_returns_updated_reading() -> None:
-    service = FakeReadingService()
-    app.dependency_overrides[get_reading_service] = lambda: service
-
-    try:
-        client = TestClient(app)
-
+    with reading_client(service) as client:
         response = client.patch(
             "/readings/7",
             json={
-                "temperature": 27.5,
+                "value": 27.5,
             },
         )
-    finally:
-        app.dependency_overrides.clear()
 
     assert response.status_code == 200
-
-    response_data = response.json()
-
-    assert response_data["id"] == 7
-    assert response_data["sensor_id"] == "sensor-01"
-    assert response_data["temperature"] == 27.5
-    assert response_data["humidity"] == 64.0
-
-    received_at = datetime.fromisoformat(
-        response_data["received_at"].replace("Z", "+00:00")
-    )
-    assert received_at == FIXED_TIME
+    assert response.json()["id"] == 7
+    assert response.json()["value"] == 27.5
+    assert response.json()["unit"] == "C"
 
     assert service.update_arguments == (
         7,
@@ -277,17 +273,61 @@ def test_update_reading_returns_updated_reading() -> None:
     )
 
 
-def test_delete_reading_returns_no_content() -> None:
+def test_create_reading_returns_404_for_unknown_sensor() -> None:
     service = FakeReadingService()
-    app.dependency_overrides[get_reading_service] = lambda: service
+    service.create_error = LookupError(
+        "No existe el sensor con id NO-EXISTE"
+    )
 
-    try:
-        client = TestClient(app)
+    with reading_client(service) as client:
+        response = client.post(
+            "/sensors/NO-EXISTE/readings",
+            json={
+                "value": 24.5,
+                "unit": "C",
+            },
+        )
 
-        response = client.delete("/readings/7")
-    finally:
-        app.dependency_overrides.clear()
+    assert response.status_code == 404
+    assert response.json() == {
+        "detail": "No existe el sensor con id NO-EXISTE"
+    }
 
-    assert response.status_code == 204
-    assert response.content == b""
-    assert service.delete_arguments == 7
+
+def test_update_reading_translates_business_error_to_400() -> None:
+    service = FakeReadingService()
+    service.update_error = ValueError(
+        "la temperatura no puede ser menor que -273.15 °C"
+    )
+
+    with reading_client(service) as client:
+        response = client.patch(
+            "/readings/7",
+            json={
+                "value": -273.16,
+            },
+        )
+
+    assert response.status_code == 400
+    assert response.json() == {
+        "detail": (
+            "la temperatura no puede ser menor "
+            "que -273.15 °C"
+        )
+    }
+
+
+def test_create_reading_rejects_unknown_unit_with_422() -> None:
+    service = FakeReadingService()
+
+    with reading_client(service) as client:
+        response = client.post(
+            "/sensors/TEMP-01/readings",
+            json={
+                "value": 24.5,
+                "unit": "fahrenheit",
+            },
+        )
+
+    assert response.status_code == 422
+    assert service.create_arguments is None
