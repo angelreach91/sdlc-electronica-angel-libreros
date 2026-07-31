@@ -2,11 +2,19 @@ from collections.abc import Callable
 from datetime import datetime, timezone
 
 from app.models.reading import Reading
+from app.models.sensor import Sensor
 from app.repositories.reading_repository import ReadingRepository
+from app.repositories.sensor_repository import SensorRepository
+from app.sensor_types import (
+    EXPECTED_UNIT_BY_TYPE,
+    SensorType,
+    SensorUnit,
+)
 
 
 def utc_now() -> datetime:
     """Devuelve la fecha y hora actual en UTC."""
+
     return datetime.now(timezone.utc)
 
 
@@ -15,32 +23,44 @@ class ReadingService:
 
     def __init__(
         self,
-        repository: ReadingRepository,
+        reading_repository: ReadingRepository,
+        sensor_repository: SensorRepository,
         clock: Callable[[], datetime] = utc_now,
     ) -> None:
-        self._repository = repository
+        self._reading_repository = reading_repository
+        self._sensor_repository = sensor_repository
         self._clock = clock
 
     def create_reading(
         self,
         sensor_id: str,
-        temperature: float,
-        humidity: float,
+        value: float,
+        unit: SensorUnit,
     ) -> Reading:
         """Valida y registra una nueva lectura."""
 
         normalized_sensor_id = self._normalize_sensor_id(sensor_id)
-        self._validate_temperature(temperature)
-        self._validate_humidity(humidity)
+        sensor = self._get_sensor_or_raise(normalized_sensor_id)
+
+        if not sensor.is_active:
+            raise ValueError(
+                f"el sensor {normalized_sensor_id} está desactivado"
+            )
+
+        self._validate_measurement(
+            sensor=sensor,
+            value=value,
+            unit=unit,
+        )
 
         reading = Reading(
             sensor_id=normalized_sensor_id,
-            temperature=temperature,
-            humidity=humidity,
+            value=value,
+            unit=unit.value,
             received_at=self._clock(),
         )
 
-        return self._repository.add(reading)
+        return self._reading_repository.add(reading)
 
     def list_by_sensor(
         self,
@@ -54,6 +74,7 @@ class ReadingService:
         """Consulta lecturas aplicando filtros y paginación."""
 
         normalized_sensor_id = self._normalize_sensor_id(sensor_id)
+        self._get_sensor_or_raise(normalized_sensor_id)
 
         if not 1 <= limit <= 100:
             raise ValueError("limit debe estar entre 1 y 100")
@@ -68,7 +89,7 @@ class ReadingService:
         ):
             raise ValueError("from_date no puede ser posterior a to_date")
 
-        return self._repository.list_by_sensor(
+        return self._reading_repository.list_by_sensor(
             normalized_sensor_id,
             limit=limit,
             offset=offset,
@@ -80,52 +101,101 @@ class ReadingService:
         """Busca una lectura mediante su identificador."""
 
         self._validate_reading_id(reading_id)
-        return self._repository.get_by_id(reading_id)
+        return self._reading_repository.get_by_id(reading_id)
 
     def update_reading(
         self,
         reading_id: int,
         *,
-        temperature: float | None = None,
-        humidity: float | None = None,
+        value: float | None = None,
+        unit: SensorUnit | None = None,
     ) -> Reading | None:
         """Actualiza los valores proporcionados de una lectura."""
 
         self._validate_reading_id(reading_id)
 
-        if temperature is None and humidity is None:
-            raise ValueError("debe proporcionar al menos un valor para actualizar")
+        if value is None and unit is None:
+            raise ValueError(
+                "debe proporcionar al menos un valor para actualizar"
+            )
 
-        if temperature is not None:
-            self._validate_temperature(temperature)
-
-        if humidity is not None:
-            self._validate_humidity(humidity)
-
-        reading = self._repository.get_by_id(reading_id)
+        reading = self._reading_repository.get_by_id(reading_id)
 
         if reading is None:
             return None
 
-        if temperature is not None:
-            reading.temperature = temperature
+        sensor = self._get_sensor_or_raise(reading.sensor_id)
 
-        if humidity is not None:
-            reading.humidity = humidity
+        final_value = reading.value if value is None else value
+        final_unit = (
+            SensorUnit(reading.unit)
+            if unit is None
+            else unit
+        )
 
-        return self._repository.update(reading)
+        self._validate_measurement(
+            sensor=sensor,
+            value=final_value,
+            unit=final_unit,
+        )
+
+        reading.value = final_value
+        reading.unit = final_unit.value
+
+        return self._reading_repository.update(reading)
 
     def delete_reading(self, reading_id: int) -> bool:
         """Elimina una lectura e indica si fue encontrada."""
 
         self._validate_reading_id(reading_id)
-        reading = self._repository.get_by_id(reading_id)
+        reading = self._reading_repository.get_by_id(reading_id)
 
         if reading is None:
             return False
 
-        self._repository.delete(reading)
+        self._reading_repository.delete(reading)
         return True
+
+    def _get_sensor_or_raise(self, sensor_id: str) -> Sensor:
+        sensor = self._sensor_repository.get_by_id(sensor_id)
+
+        if sensor is None:
+            raise LookupError(
+                f"No existe el sensor con id {sensor_id}"
+            )
+
+        return sensor
+
+    @staticmethod
+    def _validate_measurement(
+        sensor: Sensor,
+        value: float,
+        unit: SensorUnit,
+    ) -> None:
+        sensor_type = SensorType(sensor.sensor_type)
+        expected_unit = EXPECTED_UNIT_BY_TYPE[sensor_type]
+
+        if unit != expected_unit:
+            raise ValueError(
+                f"la unidad {unit.value} no corresponde "
+                f"al sensor {sensor.id}"
+            )
+
+        if (
+            sensor_type == SensorType.TEMPERATURE
+            and value < -273.15
+        ):
+            raise ValueError(
+                "la temperatura no puede ser menor que -273.15 °C"
+            )
+
+        if (
+            sensor_type == SensorType.HUMIDITY
+            and not 0.0 <= value <= 100.0
+        ):
+            raise ValueError(
+                "la humedad debe estar entre 0 y 100"
+            )
 
     @staticmethod
     def _normalize_sensor_id(sensor_id: str) -> str:
@@ -137,16 +207,8 @@ class ReadingService:
         return normalized_sensor_id
 
     @staticmethod
-    def _validate_temperature(temperature: float) -> None:
-        if temperature < -273.15:
-            raise ValueError("temperature no puede ser menor que -273.15 °C")
-
-    @staticmethod
-    def _validate_humidity(humidity: float) -> None:
-        if not 0.0 <= humidity <= 100.0:
-            raise ValueError("humidity debe estar entre 0 y 100")
-
-    @staticmethod
     def _validate_reading_id(reading_id: int) -> None:
         if reading_id <= 0:
-            raise ValueError("reading_id debe ser mayor que cero")
+            raise ValueError(
+                "reading_id debe ser mayor que cero"
+            )
