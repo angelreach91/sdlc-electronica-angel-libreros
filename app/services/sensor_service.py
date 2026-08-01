@@ -1,3 +1,4 @@
+from app.exceptions import SensorAlreadyExistsError
 from app.models.sensor import Sensor
 from app.repositories.sensor_repository import SensorRepository
 from app.sensor_types import (
@@ -26,7 +27,7 @@ class SensorService:
         normalized_name = self._normalize_name(name)
 
         if self._repository.get_by_id(normalized_sensor_id) is not None:
-            raise ValueError(
+            raise SensorAlreadyExistsError(
                 f"ya existe un sensor con id {normalized_sensor_id}"
             )
 
@@ -68,20 +69,13 @@ class SensorService:
         sensor_id: str,
         *,
         name: str | None = None,
-        sensor_type: SensorType | None = None,
-        unit: SensorUnit | None = None,
         is_active: bool | None = None,
     ) -> Sensor | None:
-        """Actualiza parcialmente un sensor existente."""
+        """Actualiza el nombre o estado de un sensor existente."""
 
         normalized_sensor_id = self._normalize_sensor_id(sensor_id)
 
-        if (
-            name is None
-            and sensor_type is None
-            and unit is None
-            and is_active is None
-        ):
+        if name is None and is_active is None:
             raise ValueError(
                 "debe proporcionar al menos un valor para actualizar"
             )
@@ -91,30 +85,8 @@ class SensorService:
         if sensor is None:
             return None
 
-        final_sensor_type = (
-            sensor_type
-            if sensor_type is not None
-            else SensorType(sensor.sensor_type)
-        )
-        final_unit = (
-            unit
-            if unit is not None
-            else SensorUnit(sensor.unit)
-        )
-
-        self._validate_type_and_unit(
-            final_sensor_type,
-            final_unit,
-        )
-
         if name is not None:
             sensor.name = self._normalize_name(name)
-
-        if sensor_type is not None:
-            sensor.sensor_type = sensor_type.value
-
-        if unit is not None:
-            sensor.unit = unit.value
 
         if is_active is not None:
             sensor.is_active = is_active

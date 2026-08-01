@@ -12,7 +12,7 @@ SensorHub permite:
 
 - registrar sensores de temperatura y humedad;
 - consultar sensores existentes;
-- actualizar parcialmente sus datos;
+- actualizar parcialmente el nombre y el estado de un sensor;
 - desactivar sensores sin eliminarlos físicamente;
 - registrar lecturas asociadas a un sensor;
 - consultar lecturas mediante identificador;
@@ -20,7 +20,9 @@ SensorHub permite:
 - filtrar lecturas por rango de fechas;
 - actualizar lecturas;
 - eliminar lecturas;
-- rechazar datos que no respeten las reglas físicas definidas.
+- rechazar datos que no respeten las reglas físicas definidas;
+- impedir que el tipo y la unidad de un sensor cambien después de su creación;
+- responder con `409 Conflict` cuando se intenta registrar un identificador existente.
 
 ## Tipos de sensor
 
@@ -111,6 +113,7 @@ app/
 ├── main.py
 ├── db.py
 ├── dependencies.py
+├── exceptions.py
 ├── init_db.py
 ├── sensor_types.py
 ├── models/
@@ -293,11 +296,11 @@ Comprueba el tipado:
 mypy app tests
 ```
 
-Estado verificado al cierre del desarrollo del viernes:
+Estado verificado después de atender la revisión por pares:
 
 ```text
-58 pruebas aprobadas
-Cobertura total: 88.12 %
+57 pruebas aprobadas
+Cobertura total: 88.09 %
 Ruff: sin errores
 Mypy: sin errores
 Swagger: validado manualmente

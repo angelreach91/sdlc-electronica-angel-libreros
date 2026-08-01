@@ -2351,3 +2351,59 @@ Cliente HTTP
 ```
 
 La siguiente etapa corresponde a abrir el pull request, recibir y realizar la revisión por pares, responder las observaciones y completar el cierre de la Semana 3.
+## Semana 3 — Revisión por pares
+
+### Atención de observaciones recibidas en el Pull Request
+
+#### Objetivo
+
+Analizar las observaciones realizadas por un compañero durante la revisión por pares del Pull Request de SensorHub y determinar cuáles requerían cambios en el código.
+
+#### Herramienta utilizada
+
+`ChatGPT`
+
+#### Prompt utilizado
+
+> Mi compañero ya comentó en mi Pull Request con observaciones y preguntas. Revisa cada comentario en relación con mi proyecto, determina si es válido y ayúdame a decidir qué cambios debo realizar antes del merge.
+
+#### Propuesta de la IA
+
+La IA revisó las dos observaciones técnicas y la pregunta recibida.
+
+La primera observación indicó que `update_sensor()` permitía modificar el tipo y la unidad de un sensor aunque ya tuviera lecturas almacenadas. Esto podía dejar lecturas históricas en grados Celsius asociadas posteriormente con un sensor identificado como humedad y porcentaje.
+
+La segunda observación señaló que el intento de registrar un sensor con un identificador existente devolvía `400 Bad Request`, aunque el código `409 Conflict` representaba mejor el conflicto con un recurso existente.
+
+La pregunta solicitó justificar la decisión de desactivar lógicamente los sensores en lugar de eliminarlos físicamente.
+
+#### Decisión tomada
+
+Se decidió aceptar las dos observaciones técnicas.
+
+El tipo y la unidad quedaron definidos únicamente durante la creación del sensor. Las actualizaciones parciales ahora permiten modificar solamente el nombre y el estado activo.
+
+También se creó una excepción específica para representar sensores duplicados y traducir ese caso a una respuesta HTTP `409 Conflict`.
+
+La desactivación lógica se conservó porque permite mantener el registro del sensor y sus lecturas históricas, rechazar nuevas lecturas mientras está inactivo y permitir una reactivación posterior mediante `PATCH`.
+
+#### Cambios realizados
+
+- Se creó `app/exceptions.py` con `SensorAlreadyExistsError`.
+- Se modificó `SensorUpdate` para aceptar solamente `name` e `is_active`.
+- Se configuró el esquema de actualización con `extra="forbid"`.
+- Se eliminó del servicio la posibilidad de modificar `sensor_type` y `unit`.
+- Se agregó una respuesta `409 Conflict` para identificadores duplicados.
+- Se conservaron los demás errores de negocio como `400 Bad Request`.
+- Se actualizaron las pruebas unitarias del servicio.
+- Se agregaron pruebas HTTP para el código `409`.
+- Se agregó una prueba que rechaza con `422` el intento de modificar el tipo y la unidad.
+- Se ejecutaron nuevamente Pytest, Ruff y Mypy.
+
+#### Resultado de la validación
+
+```text
+57 pruebas aprobadas
+Cobertura total: 88.09 %
+Ruff: sin errores
+Mypy: sin errores en 29 archivos

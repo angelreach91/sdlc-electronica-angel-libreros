@@ -4,6 +4,7 @@ from contextlib import contextmanager
 from fastapi.testclient import TestClient
 
 from app.dependencies import get_sensor_service
+from app.exceptions import SensorAlreadyExistsError
 from app.main import app
 from app.models.sensor import Sensor
 from app.sensor_types import SensorType, SensorUnit
@@ -18,6 +19,9 @@ class FakeSensorService:
         ) = None
         self.list_arguments: tuple[int, int] | None = None
         self.get_arguments: str | None = None
+        self.update_arguments: (
+            tuple[str, str | None, bool | None] | None
+        ) = None
 
         self.create_error: ValueError | None = None
         self.get_result: Sensor | None = Sensor(
@@ -87,10 +91,13 @@ class FakeSensorService:
         sensor_id: str,
         *,
         name: str | None = None,
-        sensor_type: SensorType | None = None,
-        unit: SensorUnit | None = None,
         is_active: bool | None = None,
     ) -> Sensor | None:
+        self.update_arguments = (
+            sensor_id,
+            name,
+            is_active,
+        )
         return None
 
     def deactivate_sensor(self, sensor_id: str) -> bool:
@@ -198,6 +205,29 @@ def test_create_sensor_translates_business_error_to_400() -> None:
     }
 
 
+def test_create_sensor_translates_duplicate_to_409() -> None:
+    service = FakeSensorService()
+    service.create_error = SensorAlreadyExistsError(
+        "ya existe un sensor con id TEMP-01"
+    )
+
+    with sensor_client(service) as client:
+        response = client.post(
+            "/sensors",
+            json={
+                "id": "TEMP-01",
+                "name": "Sensor exterior",
+                "sensor_type": "temperature",
+                "unit": "C",
+            },
+        )
+
+    assert response.status_code == 409
+    assert response.json() == {
+        "detail": "ya existe un sensor con id TEMP-01"
+    }
+
+
 def test_get_sensor_returns_404_when_missing() -> None:
     service = FakeSensorService()
     service.get_result = None
@@ -228,3 +258,19 @@ def test_create_sensor_rejects_unknown_type_with_422() -> None:
 
     assert response.status_code == 422
     assert service.create_arguments is None
+
+
+def test_update_sensor_rejects_type_and_unit_with_422() -> None:
+    service = FakeSensorService()
+
+    with sensor_client(service) as client:
+        response = client.patch(
+            "/sensors/TEMP-01",
+            json={
+                "sensor_type": "humidity",
+                "unit": "%",
+            },
+        )
+
+    assert response.status_code == 422
+    assert service.update_arguments is None

@@ -10,6 +10,7 @@ from fastapi import (
 )
 
 from app.dependencies import get_sensor_service
+from app.exceptions import SensorAlreadyExistsError
 from app.schemas.sensor import (
     SensorCreate,
     SensorResponse,
@@ -31,6 +32,13 @@ router = APIRouter(
 def _bad_request(error: ValueError) -> HTTPException:
     return HTTPException(
         status_code=status.HTTP_400_BAD_REQUEST,
+        detail=str(error),
+    )
+
+
+def _conflict(error: SensorAlreadyExistsError) -> HTTPException:
+    return HTTPException(
+        status_code=status.HTTP_409_CONFLICT,
         detail=str(error),
     )
 
@@ -60,6 +68,8 @@ def create_sensor(
             sensor_type=sensor_data.sensor_type,
             unit=sensor_data.unit,
         )
+    except SensorAlreadyExistsError as error:
+        raise _conflict(error) from error
     except ValueError as error:
         raise _bad_request(error) from error
 
@@ -127,8 +137,6 @@ def update_sensor(
         sensor = service.update_sensor(
             sensor_id,
             name=sensor_data.name,
-            sensor_type=sensor_data.sensor_type,
-            unit=sensor_data.unit,
             is_active=sensor_data.is_active,
         )
     except ValueError as error:

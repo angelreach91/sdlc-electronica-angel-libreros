@@ -1,5 +1,6 @@
 import pytest
 
+from app.exceptions import SensorAlreadyExistsError
 from app.models.sensor import Sensor
 from app.sensor_types import SensorType, SensorUnit
 from app.services.sensor_service import SensorService
@@ -91,7 +92,7 @@ def test_create_sensor_rejects_duplicate_id(
     create_temperature_sensor(service)
 
     with pytest.raises(
-        ValueError,
+        SensorAlreadyExistsError,
         match="ya existe un sensor",
     ):
         create_temperature_sensor(service)
@@ -191,53 +192,6 @@ def test_update_sensor_changes_fields_and_persists(
     assert sensor.unit == "C"
     assert sensor.is_active is False
     assert repository.update_calls == [sensor]
-
-
-def test_update_sensor_changes_type_and_unit_and_persists(
-    context: TestContext,
-) -> None:
-    service, repository = context
-    sensor = create_temperature_sensor(service)
-
-    updated = service.update_sensor(
-        sensor.id,
-        sensor_type=SensorType.HUMIDITY,
-        unit=SensorUnit.PERCENT,
-    )
-
-    assert updated is not None
-    assert updated.id == sensor.id
-    assert updated.sensor_type == "humidity"
-    assert updated.unit == "%"
-    assert repository.update_calls == [sensor]
-
-
-@pytest.mark.parametrize(
-    ("sensor_type", "unit"),
-    [
-        (SensorType.HUMIDITY, None),
-        (None, SensorUnit.PERCENT),
-    ],
-)
-def test_update_sensor_rejects_incompatible_type_and_unit(
-    context: TestContext,
-    sensor_type: SensorType | None,
-    unit: SensorUnit | None,
-) -> None:
-    service, repository = context
-    sensor = create_temperature_sensor(service)
-
-    with pytest.raises(
-        ValueError,
-        match="la unidad .* no corresponde al tipo",
-    ):
-        service.update_sensor(
-            sensor.id,
-            sensor_type=sensor_type,
-            unit=unit,
-        )
-
-    assert repository.update_calls == []
 
 
 def test_update_sensor_rejects_empty_update(

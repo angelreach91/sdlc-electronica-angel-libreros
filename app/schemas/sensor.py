@@ -13,15 +13,15 @@ class SensorCreate(BaseModel):
 
 
 class SensorUpdate(BaseModel):
-    """Datos que pueden modificarse en un sensor."""
+    """Datos que pueden modificarse en un sensor existente."""
+
+    model_config = ConfigDict(extra="forbid")
 
     name: str | None = Field(
         default=None,
         min_length=1,
         max_length=100,
     )
-    sensor_type: SensorType | None = None
-    unit: SensorUnit | None = None
     is_active: bool | None = None
 
 
