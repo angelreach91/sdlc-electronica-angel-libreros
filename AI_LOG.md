@@ -1821,3 +1821,589 @@ La validación manual con Swagger y SQLite complementó las pruebas aisladas al 
 
 ```text
 Solicitud HTTP → Router → Servicio → Repositorio → SQLAlchemy → SQLite
+```
+
+### Viernes — Ejercicio integrador de SensorHub y cierre técnico de la API
+
+#### Objetivo
+
+Completar la API de SensorHub integrando la administración de sensores y lecturas dentro de una arquitectura de cuatro capas.
+
+La actividad debía incluir:
+
+- CRUD de sensores;
+- CRUD de lecturas;
+- paginación;
+- filtros por rango de fechas;
+- validación física según el tipo de sensor;
+- persistencia con SQLAlchemy 2.x y SQLite;
+- pruebas de integración con `TestClient`;
+- cobertura mínima del 80 %;
+- Ruff y Mypy sin errores;
+- documentación funcional mediante Swagger.
+
+También se buscó revisar críticamente las pruebas generadas durante el desarrollo para evitar casos redundantes, pruebas que dieran una falsa confianza o complejidad agregada únicamente para aumentar la cobertura.
+
+#### Herramientas utilizadas
+
+- ChatGPT, para analizar la guía, planificar el trabajo, explicar cada modificación y coordinar las verificaciones.
+- Codex, para revisar la implementación y las pruebas en modo auditoría, sin modificar automáticamente el repositorio.
+- Pytest y pytest-cov, para ejecutar las pruebas y medir la cobertura.
+- Ruff y Mypy, para comprobar el estilo, la calidad y el tipado.
+- Swagger, para probar manualmente la API completa.
+
+#### Solicitud inicial realizada a la IA
+
+> Revisa la actividad correspondiente al viernes de la Semana 3 y compara sus requisitos con el estado actual de SensorHub.
+>
+> Necesito completar el CRUD de sensores y lecturas, las validaciones físicas, la paginación, los filtros por fecha, la arquitectura en cuatro capas y las pruebas de integración.
+>
+> Guíame indicando siempre el archivo que debo crear o modificar. Mantén el desarrollo dentro del estándar esperado y no agregues características de alto potencial que no sean necesarias.
+>
+> No hagas commits hasta que toda la actividad esté terminada y verificada.
+
+#### Propuesta inicial
+
+La propuesta consistió en ampliar SensorHub con una entidad independiente para representar sensores y adaptar las lecturas para que cada registro almacenara una sola magnitud.
+
+Se propuso crear:
+
+- `app/sensor_types.py`;
+- `app/models/sensor.py`;
+- `app/repositories/sensor_repository.py`;
+- `app/services/sensor_service.py`;
+- `app/schemas/sensor.py`;
+- `app/routers/sensors.py`.
+
+También se propuso modificar el modelo de lecturas para utilizar:
+
+- `sensor_id`;
+- `value`;
+- `unit`;
+- `received_at`.
+
+La arquitectura propuesta conservó el flujo:
+
+```text
+Router
+→ Service
+→ Repository
+→ Model
+→ SQLite
+```
+
+#### Revisión y decisiones tomadas
+
+La propuesta no se aceptó automáticamente. Antes de continuar se revisó cómo se relacionaban los sensores con sus lecturas y qué responsabilidad correspondía a cada capa.
+
+Se decidió conservar dos tipos de sensor:
+
+- `temperature`, cuya unidad válida es `C`;
+- `humidity`, cuya unidad válida es `%`.
+
+Las reglas físicas definidas fueron:
+
+- la temperatura no puede ser menor que `-273.15 °C`;
+- la humedad debe estar entre `0 %` y `100 %`;
+- la unidad debe coincidir con el tipo del sensor;
+- no se pueden registrar lecturas para sensores inexistentes;
+- no se pueden registrar lecturas para sensores desactivados.
+
+También se decidió que eliminar un sensor significara desactivarlo mediante `is_active=False`, conservando su registro y sus lecturas históricas.
+
+#### Cambios realizados en la implementación
+
+Se creó el modelo ORM `Sensor` con los campos:
+
+- `id`;
+- `name`;
+- `sensor_type`;
+- `unit`;
+- `is_active`.
+
+Se creó un repositorio de sensores con operaciones para:
+
+- agregar;
+- listar con paginación;
+- consultar por identificador;
+- actualizar.
+
+Se implementó `SensorService` con reglas para:
+
+- normalizar identificadores y nombres;
+- rechazar identificadores duplicados;
+- validar la compatibilidad entre tipo y unidad;
+- actualizar parcialmente un sensor;
+- desactivar un sensor;
+- validar `limit` y `offset`.
+
+Se crearon los esquemas Pydantic de sensores y los endpoints:
+
+- `POST /sensors`;
+- `GET /sensors`;
+- `GET /sensors/{sensor_id}`;
+- `PATCH /sensors/{sensor_id}`;
+- `DELETE /sensors/{sensor_id}`.
+
+El modelo de lecturas fue adaptado para almacenar una sola medición mediante `value` y `unit`.
+
+El servicio de lecturas se amplió para:
+
+- consultar el sensor antes de registrar una lectura;
+- comprobar que se encuentre activo;
+- validar el valor y la unidad;
+- listar con paginación y filtros de fecha;
+- consultar una lectura por identificador;
+- actualizar parcialmente una lectura;
+- eliminar una lectura.
+
+La tabla `readings` declara una clave foránea desde `sensor_id` hacia `sensors.id`.
+
+#### Revisión de la base de datos local
+
+La base `sensorhub.db` todavía conservaba el esquema anterior con las columnas:
+
+- `temperature`;
+- `humidity`.
+
+Se comprobó el esquema mediante `sqlite3` y se determinó que ejecutar solamente `Base.metadata.create_all()` no modificaría una tabla existente.
+
+Por esta razón:
+
+1. se creó una copia de seguridad fuera del repositorio;
+2. se eliminó la base local antigua;
+3. se ejecutó `python -m app.init_db`;
+4. se comprobó que existieran las tablas `sensors` y `readings`;
+5. se confirmó la clave foránea declarada en el esquema.
+
+La base recreada utiliza:
+
+```text
+sensors
+- id
+- name
+- sensor_type
+- unit
+- is_active
+
+readings
+- id
+- sensor_id
+- value
+- unit
+- received_at
+```
+
+#### Primera auditoría de Codex
+
+Se solicitó a Codex revisar críticamente toda la suite sin modificar archivos.
+
+La auditoría señaló principalmente:
+
+- pruebas de actualización que observaban el mismo objeto dentro de una sesión;
+- un filtro superior de fechas que no estaba protegido correctamente;
+- una prueba de persistencia redundante;
+- repositorios falsos que reimplementaban demasiada lógica;
+- pruebas HTTP con caminos felices duplicados;
+- uso de `dependency_overrides.clear()`;
+- una prueba de integración demasiado extensa;
+- posible bloqueo de `TestClient`;
+- ausencia de algunos contratos HTTP representativos.
+
+Cada observación se evaluó antes de aplicar cambios.
+
+#### Decisión sobre TestClient
+
+Codex señaló un posible bloqueo relacionado con `TestClient`.
+
+Antes de modificar dependencias se realizaron comprobaciones manuales:
+
+- `GET /health` con un context manager;
+- `GET /health` con cierre manual;
+- una prueba HTTP aislada;
+- todas las pruebas del router de lecturas;
+- todas las pruebas del router de sensores;
+- la prueba de integración;
+- la suite completa.
+
+Todas terminaron correctamente.
+
+Por ello se decidió:
+
+- no modificar `httpx`;
+- no modificar `httpx2`;
+- no cambiar FastAPI;
+- no cambiar Starlette;
+- considerar que el bloqueo no era reproducible en el entorno real.
+
+#### Fortalecimiento de pruebas de repositorios
+
+Las pruebas de repositorios fueron modificadas para utilizar sesiones diferentes.
+
+El procedimiento utilizado fue:
+
+```text
+Sesión 1
+→ crear o actualizar
+→ commit
+→ cerrar sesión
+
+Sesión 2
+→ consultar nuevamente desde SQLite
+→ comprobar la persistencia real
+```
+
+En el repositorio de lecturas también se agregaron registros:
+
+- anteriores al límite inferior;
+- dentro del rango;
+- posteriores al límite superior;
+- pertenecientes a otro sensor.
+
+Esto permite detectar la pérdida accidental de:
+
+- `from_date`;
+- `to_date`;
+- el filtro por sensor;
+- `limit`;
+- `offset`.
+
+Se eliminó `tests/test_reading_persistence.py` porque su comportamiento ya estaba cubierto de forma más útil por el repositorio real y una nueva sesión.
+
+#### Uso de fakes como spies
+
+Los repositorios falsos de los servicios fueron adaptados para registrar llamadas mediante atributos como:
+
+- `add_calls`;
+- `update_calls`;
+- `delete_calls`;
+- `get_arguments`;
+- `list_arguments`.
+
+Esto permite detectar errores como:
+
+- modificar un objeto sin llamar al repositorio;
+- no reenviar la paginación;
+- no reenviar los filtros;
+- no normalizar un identificador;
+- no delegar una eliminación.
+
+El fake de lecturas dejó de implementar filtros o reglas físicas, evitando que las pruebas verificaran una segunda implementación creada únicamente para el test.
+
+#### Revisión de las pruebas HTTP
+
+Las pruebas HTTP aisladas se redujeron para verificar contratos representativos.
+
+En sensores se comprobaron:
+
+- `201` al crear;
+- `200` al listar;
+- `400` por una regla de negocio;
+- `404` por un sensor inexistente;
+- `422` por un tipo inválido.
+
+En lecturas se comprobaron:
+
+- `201` al crear;
+- `200` al listar con paginación y fechas;
+- `200` al actualizar parcialmente;
+- `400` por un valor físicamente inválido;
+- `404` por un sensor inexistente;
+- `422` por una unidad desconocida.
+
+Se reemplazó:
+
+```python
+app.dependency_overrides.clear()
+```
+
+por la eliminación exclusiva del override utilizado en cada prueba mediante `pop()`.
+
+También se corrigió una comparación frágil de fechas. FastAPI serializaba UTC mediante `Z`, mientras que `datetime.isoformat()` producía `+00:00`. La prueba fue modificada para convertir la respuesta nuevamente a `datetime` y comparar el valor temporal, no su representación textual.
+
+#### División de la prueba de integración
+
+La prueba monolítica fue dividida en dos flujos independientes.
+
+Primer flujo:
+
+```text
+crear sensor
+→ crear lectura
+→ listar lecturas
+→ consultar lectura por ID
+```
+
+Segundo flujo:
+
+```text
+crear y actualizar sensor
+→ crear y actualizar lectura
+→ eliminar lectura
+→ desactivar sensor
+→ rechazar una nueva lectura
+```
+
+Cada prueba utiliza:
+
+- una base SQLite temporal diferente;
+- una fixture con alcance de función;
+- todas las capas reales;
+- un override exclusivo de `get_session`;
+- cierre del `TestClient`;
+- eliminación del override;
+- `engine.dispose()`.
+
+Se decidió mantener la fixture en el archivo de integración porque no se reutiliza en otros módulos y moverla a `conftest.py` agregaría abstracción sin beneficio suficiente.
+
+#### Segunda auditoría de Codex
+
+Después de los cambios se solicitó una segunda auditoría completa.
+
+Codex confirmó que:
+
+- la arquitectura en cuatro capas era correcta;
+- no existían defectos bloqueantes;
+- las pruebas de repositorios verificaban persistencia real;
+- eliminar la prueba redundante había sido correcto;
+- los spies aportaban valor;
+- el tamaño de `test_reading_service.py` estaba mayormente justificado;
+- los contratos HTTP eran suficientes para el estándar esperado;
+- la integración estaba correctamente dividida;
+- la cobertura no estaba inflada artificialmente;
+- no era necesario modificar TestClient ni sus dependencias.
+
+La única brecha de pruebas relevante fue la actualización conjunta de `sensor_type` y `unit`.
+
+#### Pruebas adicionales realizadas con Codex
+
+Se solicitó a Codex modificar únicamente:
+
+```text
+tests/test_sensor_service.py
+```
+
+Se añadieron:
+
+- una prueba para cambiar un sensor de `temperature/C` a `humidity/%`;
+- dos casos parametrizados para rechazar actualizaciones incompatibles:
+  - cambiar solo el tipo;
+  - cambiar solo la unidad.
+
+Se verificó que el servicio valida la combinación final antes de modificar el objeto, por lo que una actualización rechazada no deja el sensor en un estado parcial.
+
+#### Verificaciones automatizadas finales
+
+Al finalizar el trabajo se ejecutaron:
+
+```bash
+python -m pytest --no-cov -q
+ruff check app tests
+mypy app tests
+git diff --check
+python -m pytest
+```
+
+Resultados:
+
+```text
+58 pruebas aprobadas
+Cobertura total: 88.12 %
+Ruff: sin errores
+Mypy: sin errores en 28 archivos
+git diff --check: correcto
+```
+
+La cobertura mínima requerida era del 80 %, por lo que el resultado supera el estándar esperado.
+
+#### Validación manual con Swagger
+
+Se inició la aplicación mediante:
+
+```bash
+python -m uvicorn app.main:app --reload
+```
+
+Después se abrió:
+
+```text
+http://127.0.0.1:8000/docs
+```
+
+Swagger mostró correctamente:
+
+- cinco operaciones de sensores;
+- cinco operaciones de lecturas;
+- `GET /health`;
+- los esquemas Pydantic;
+- la versión `SensorHub 0.2.0`.
+
+Desde Swagger se comprobó el siguiente flujo:
+
+1. consultar `GET /health`;
+2. crear un sensor de temperatura;
+3. consultar el sensor;
+4. actualizar su nombre;
+5. crear una lectura de `24.5 C`;
+6. listar sus lecturas;
+7. consultar la lectura por identificador;
+8. actualizar el valor a `27.5 C`;
+9. eliminar la lectura;
+10. comprobar que la lectura devolviera `404`;
+11. desactivar el sensor;
+12. comprobar que permaneciera registrado con `is_active=false`;
+13. intentar registrar una lectura nueva;
+14. confirmar el rechazo mediante `400`.
+
+Todas las operaciones devolvieron los códigos y datos esperados.
+
+#### Documentación actualizada
+
+Durante el cierre se revisaron los archivos de documentación.
+
+Se actualizó `requirements.txt` para incluir las herramientas realmente utilizadas:
+
+- `pytest`;
+- `pytest-cov`;
+- `ruff`;
+- `mypy`;
+- `pre-commit`.
+
+Se reemplazó el README anterior, centrado únicamente en el driver UART, por una descripción del producto actual SensorHub.
+
+El nuevo README documenta:
+
+- funcionalidades;
+- arquitectura;
+- instalación;
+- inicialización de SQLite;
+- ejecución con Uvicorn;
+- Swagger;
+- endpoints;
+- pruebas;
+- historial del curso.
+
+Se actualizó `ADR-0002` para registrar la evolución del modelo original hacia las tablas actuales de sensores y lecturas.
+
+Se completó `ADR-0003`, que había terminado con un bloque Markdown abierto, y se documentó:
+
+- la arquitectura en capas;
+- las responsabilidades;
+- la inyección de dependencias;
+- el flujo de un `POST`;
+- las alternativas;
+- las consecuencias.
+
+También se corrigió el bloque de código incompleto al final de la entrada del jueves en esta bitácora.
+
+#### Decisión final
+
+Se decidió considerar terminado el desarrollo funcional del viernes porque se cumplen:
+
+- CRUD de sensores;
+- CRUD de lecturas;
+- paginación;
+- filtros por fecha;
+- validación física;
+- arquitectura de cuatro capas;
+- integración mediante `TestClient`;
+- cobertura superior al 80 %;
+- Ruff y Mypy sin errores;
+- Swagger funcional.
+
+No se implementaron recomendaciones opcionales como:
+
+- validación explícita de `NaN` e infinito;
+- activación de `PRAGMA foreign_keys=ON`;
+- excepciones de dominio personalizadas;
+- respuesta `409` para duplicados;
+- cobertura artificial de `__repr__` o `init_db.py`;
+- reducción de pruebas únicamente para disminuir líneas;
+- traslado de fixtures a `conftest.py`.
+
+Estas propuestas se consideraron válidas como mejoras futuras, pero no indispensables para el estándar esperado de la actividad.
+
+#### Justificación
+
+La inteligencia artificial se utilizó como apoyo para planificar, revisar, cuestionar y verificar el trabajo.
+
+Las propuestas no se aceptaron automáticamente. Cada recomendación se clasificó según su impacto:
+
+- los problemas funcionales o de falsa confianza se corrigieron;
+- las mejoras pequeñas se evaluaron;
+- las recomendaciones de alto potencial se descartaron cuando añadían complejidad sin aportar al objetivo de la semana.
+
+El proceso permitió mantener una arquitectura comprensible, una suite de pruebas útil y una implementación que puede explicarse de extremo a extremo.
+
+El flujo principal de registro de una lectura puede resumirse así:
+
+```text
+Cliente HTTP
+→ Router de FastAPI
+→ Schema Pydantic
+→ Dependencia
+→ ReadingService
+→ Repositorios
+→ Modelos SQLAlchemy
+→ SQLite
+→ ReadingResponse
+→ Cliente HTTP
+```
+
+La siguiente etapa corresponde a abrir el pull request, recibir y realizar la revisión por pares, responder las observaciones y completar el cierre de la Semana 3.
+## Semana 3 — Revisión por pares
+
+### Atención de observaciones recibidas en el Pull Request
+
+#### Objetivo
+
+Analizar las observaciones realizadas por un compañero durante la revisión por pares del Pull Request de SensorHub y determinar cuáles requerían cambios en el código.
+
+#### Herramienta utilizada
+
+`ChatGPT`
+
+#### Prompt utilizado
+
+> Mi compañero ya comentó en mi Pull Request con observaciones y preguntas. Revisa cada comentario en relación con mi proyecto, determina si es válido y ayúdame a decidir qué cambios debo realizar antes del merge.
+
+#### Propuesta de la IA
+
+La IA revisó las dos observaciones técnicas y la pregunta recibida.
+
+La primera observación indicó que `update_sensor()` permitía modificar el tipo y la unidad de un sensor aunque ya tuviera lecturas almacenadas. Esto podía dejar lecturas históricas en grados Celsius asociadas posteriormente con un sensor identificado como humedad y porcentaje.
+
+La segunda observación señaló que el intento de registrar un sensor con un identificador existente devolvía `400 Bad Request`, aunque el código `409 Conflict` representaba mejor el conflicto con un recurso existente.
+
+La pregunta solicitó justificar la decisión de desactivar lógicamente los sensores en lugar de eliminarlos físicamente.
+
+#### Decisión tomada
+
+Se decidió aceptar las dos observaciones técnicas.
+
+El tipo y la unidad quedaron definidos únicamente durante la creación del sensor. Las actualizaciones parciales ahora permiten modificar solamente el nombre y el estado activo.
+
+También se creó una excepción específica para representar sensores duplicados y traducir ese caso a una respuesta HTTP `409 Conflict`.
+
+La desactivación lógica se conservó porque permite mantener el registro del sensor y sus lecturas históricas, rechazar nuevas lecturas mientras está inactivo y permitir una reactivación posterior mediante `PATCH`.
+
+#### Cambios realizados
+
+- Se creó `app/exceptions.py` con `SensorAlreadyExistsError`.
+- Se modificó `SensorUpdate` para aceptar solamente `name` e `is_active`.
+- Se configuró el esquema de actualización con `extra="forbid"`.
+- Se eliminó del servicio la posibilidad de modificar `sensor_type` y `unit`.
+- Se agregó una respuesta `409 Conflict` para identificadores duplicados.
+- Se conservaron los demás errores de negocio como `400 Bad Request`.
+- Se actualizaron las pruebas unitarias del servicio.
+- Se agregaron pruebas HTTP para el código `409`.
+- Se agregó una prueba que rechaza con `422` el intento de modificar el tipo y la unidad.
+- Se ejecutaron nuevamente Pytest, Ruff y Mypy.
+
+#### Resultado de la validación
+
+```text
+57 pruebas aprobadas
+Cobertura total: 88.09 %
+Ruff: sin errores
+Mypy: sin errores en 29 archivos

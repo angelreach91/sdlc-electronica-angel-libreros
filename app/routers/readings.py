@@ -23,24 +23,22 @@ ReadingServiceDependency = Annotated[
     Depends(get_reading_service),
 ]
 
-router = APIRouter()
+router = APIRouter(
+    tags=["readings"],
+)
 
 
-def bad_request(error: ValueError) -> HTTPException:
-    """Convierte un error de negocio en una respuesta HTTP 400."""
-
+def _bad_request(error: ValueError) -> HTTPException:
     return HTTPException(
         status_code=status.HTTP_400_BAD_REQUEST,
         detail=str(error),
     )
 
 
-def reading_not_found(reading_id: int) -> HTTPException:
-    """Construye la respuesta HTTP para una lectura inexistente."""
-
+def _not_found(detail: str) -> HTTPException:
     return HTTPException(
         status_code=status.HTTP_404_NOT_FOUND,
-        detail=f"No existe la lectura con id {reading_id}",
+        detail=detail,
     )
 
 
@@ -59,11 +57,13 @@ def create_reading(
     try:
         reading = service.create_reading(
             sensor_id=sensor_id,
-            temperature=reading_data.temperature,
-            humidity=reading_data.humidity,
+            value=reading_data.value,
+            unit=reading_data.unit,
         )
+    except LookupError as error:
+        raise _not_found(str(error)) from error
     except ValueError as error:
-        raise bad_request(error) from error
+        raise _bad_request(error) from error
 
     return ReadingResponse.model_validate(reading)
 
@@ -96,8 +96,10 @@ def list_readings(
             from_date=from_date,
             to_date=to_date,
         )
+    except LookupError as error:
+        raise _not_found(str(error)) from error
     except ValueError as error:
-        raise bad_request(error) from error
+        raise _bad_request(error) from error
 
     return [
         ReadingResponse.model_validate(reading)
@@ -118,10 +120,12 @@ def get_reading(
     try:
         reading = service.get_by_id(reading_id)
     except ValueError as error:
-        raise bad_request(error) from error
+        raise _bad_request(error) from error
 
     if reading is None:
-        raise reading_not_found(reading_id)
+        raise _not_found(
+            f"No existe la lectura con id {reading_id}"
+        )
 
     return ReadingResponse.model_validate(reading)
 
@@ -140,14 +144,18 @@ def update_reading(
     try:
         reading = service.update_reading(
             reading_id,
-            temperature=reading_data.temperature,
-            humidity=reading_data.humidity,
+            value=reading_data.value,
+            unit=reading_data.unit,
         )
+    except LookupError as error:
+        raise _not_found(str(error)) from error
     except ValueError as error:
-        raise bad_request(error) from error
+        raise _bad_request(error) from error
 
     if reading is None:
-        raise reading_not_found(reading_id)
+        raise _not_found(
+            f"No existe la lectura con id {reading_id}"
+        )
 
     return ReadingResponse.model_validate(reading)
 
@@ -165,9 +173,11 @@ def delete_reading(
     try:
         deleted = service.delete_reading(reading_id)
     except ValueError as error:
-        raise bad_request(error) from error
+        raise _bad_request(error) from error
 
     if not deleted:
-        raise reading_not_found(reading_id)
+        raise _not_found(
+            f"No existe la lectura con id {reading_id}"
+        )
 
     return Response(status_code=status.HTTP_204_NO_CONTENT)
