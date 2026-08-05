@@ -2407,3 +2407,82 @@ La desactivación lógica se conservó porque permite mantener el registro del s
 Cobertura total: 88.09 %
 Ruff: sin errores
 Mypy: sin errores en 29 archivos
+
+## Semana 4
+
+###Lunes: contenerización de SensorHub con Docker
+
+#### Objetivo
+
+Comprender los conceptos fundamentales de Docker y contenerizar la API SensorHub para ejecutarla en un entorno aislado y reproducible.
+
+#### Herramientas utilizadas
+
+- `ChatGPT`
+- Tutorial oficial `Docker Get Started`
+- Docker Desktop con integración WSL2
+
+#### Prompt utilizado
+
+> Ayúdame a revisar y comprender paso a paso el tutorial oficial de Docker. Después aplica lo aprendido a mi API SensorHub, indicando qué archivos crear, qué comandos ejecutar y cómo comprobar que la aplicación funciona dentro de un contenedor.
+
+#### Propuesta de la IA
+
+La IA propuso comenzar con el ejercicio oficial `getting-started-app` antes de modificar SensorHub.
+
+Durante el ejercicio se practicó:
+
+- la diferencia entre imagen y contenedor;
+- la creación de un `Dockerfile`;
+- la construcción de imágenes con `docker build`;
+- la ejecución de contenedores con `docker run`;
+- el mapeo de puertos;
+- la actualización y reconstrucción de una imagen;
+- la publicación de una imagen en Docker Hub;
+- la persistencia de datos mediante volúmenes.
+
+Después se propuso crear para SensorHub:
+
+- un `Dockerfile` basado en `python:3.12-slim`;
+- un archivo `.dockerignore`;
+- un comando de inicio que crea las tablas SQLite y ejecuta Uvicorn;
+- una imagen local identificada como `sensorhub:dev`;
+- un contenedor llamado `sensorhub-api`.
+
+#### Decisión tomada
+
+Se decidió seguir primero el ejercicio oficial para comprender el ciclo completo de Docker sin alterar el proyecto principal.
+
+Posteriormente se aplicaron los mismos conceptos a SensorHub, manteniendo SQLite para la actividad del lunes. La integración con PostgreSQL, Docker Compose y Alembic se dejó para el martes, conforme a la ruta de trabajo de la semana.
+
+Se eligió `python:3.12-slim` porque es una imagen ligera y coincide con la versión propuesta en la guía de la Semana 4.
+
+También se decidió copiar primero `requirements.txt` y después el código de `app/`, con el objetivo de aprovechar la caché de capas y evitar reinstalar dependencias cuando únicamente cambia el código fuente.
+
+#### Cambios realizados
+
+- Se creó `Dockerfile`.
+- Se creó `.dockerignore`.
+- Se excluyeron del contexto de construcción:
+  - el entorno virtual;
+  - el historial de Git;
+  - las cachés de Python, Pytest, Ruff y Mypy;
+  - la base de datos SQLite local;
+  - las pruebas;
+  - los ejercicios de semanas anteriores;
+  - archivos de documentación que no son necesarios para ejecutar la API.
+- Se construyó la imagen `sensorhub:dev`.
+- Se creó el contenedor `sensorhub-api`.
+- Se publicó el puerto interno 8000 en `127.0.0.1:8000`.
+- Se inicializaron las tablas SQLite mediante `python -m app.init_db`.
+- Se inició la API con Uvicorn escuchando en `0.0.0.0:8000`.
+
+#### Resultado de la validación
+
+Antes de contenerizar la aplicación se obtuvo:
+
+```text
+Ruff: sin errores en app y tests
+Mypy: sin errores en 22 archivos
+Pytest: 57 pruebas aprobadas
+Cobertura total: 88.09 %
