@@ -2407,10 +2407,10 @@ La desactivación lógica se conservó porque permite mantener el registro del s
 Cobertura total: 88.09 %
 Ruff: sin errores
 Mypy: sin errores en 29 archivos
-
+```
 ## Semana 4
 
-###Lunes: contenerización de SensorHub con Docker
+### Lunes: contenerización de SensorHub con Docker
 
 #### Objetivo
 
@@ -2486,3 +2486,606 @@ Ruff: sin errores en app y tests
 Mypy: sin errores en 22 archivos
 Pytest: 57 pruebas aprobadas
 Cobertura total: 88.09 %
+```
+### Martes: Docker Compose, PostgreSQL y Alembic
+
+#### Objetivo
+
+Orquestar la API SensorHub y una base de datos PostgreSQL mediante Docker Compose, configurar la conexión mediante variables de entorno, comprobar la persistencia de los datos e implementar Alembic para administrar el esquema de la base de datos mediante migraciones versionadas.
+
+#### Herramientas utilizadas
+
+- `ChatGPT`
+- Docker Desktop
+- Docker Compose
+- PostgreSQL 16
+- SQLAlchemy 2.x
+- Psycopg
+- Alembic
+- Pytest
+- Ruff
+- Mypy
+
+#### Prompt utilizado
+
+> Ayúdame a desarrollar paso a paso la actividad del martes de la Semana 4.
+>
+> Necesito levantar SensorHub y PostgreSQL mediante Docker Compose, utilizar variables de entorno sin subir secretos al repositorio, comprobar que los datos persistan mediante un volumen e inicializar Alembic con una primera migración autogenerada.
+>
+> Indícame los archivos que debo crear o modificar y explica el propósito de cada cambio antes de continuar.
+
+#### Propuesta de la IA
+
+La IA propuso separar la aplicación y la base de datos en dos servicios independientes:
+
+```text
+Docker Compose
+├── api: FastAPI, SQLAlchemy y Uvicorn
+└── db: PostgreSQL 16
+```
+
+También propuso:
+
+- mantener SQLite como configuración local predeterminada;
+- leer `DATABASE_URL` desde una variable de entorno;
+- normalizar direcciones que comiencen con `postgres://` o `postgresql://`;
+- utilizar Psycopg como controlador de PostgreSQL;
+- almacenar las credenciales locales en un archivo `.env`;
+- excluir `.env` mediante `.gitignore`;
+- versionar solamente un archivo `.env.example`;
+- declarar un health check para PostgreSQL;
+- utilizar un volumen nombrado para conservar los datos;
+- esperar a que PostgreSQL estuviera saludable antes de iniciar la API;
+- inicializar Alembic;
+- conectar Alembic con `Base.metadata`;
+- generar una primera migración autogenerada;
+- reemplazar la creación directa de tablas por `alembic upgrade head`;
+- ejecutar las migraciones antes de iniciar Uvicorn.
+
+#### Revisión conceptual
+
+Antes de crear los archivos se revisó por qué la API y PostgreSQL deben encontrarse en contenedores separados.
+
+Se comprendió que cada contenedor debe tener una responsabilidad principal:
+
+```text
+api
+→ atender solicitudes HTTP;
+→ validar información;
+→ ejecutar reglas de negocio;
+→ acceder a los repositorios.
+
+db
+→ almacenar sensores y lecturas;
+→ administrar las tablas;
+→ conservar los datos.
+```
+
+También se revisó que `localhost` tiene un significado diferente dentro de un contenedor.
+
+Dentro del servicio `api`:
+
+```text
+localhost = el propio contenedor de la API
+```
+
+Por esta razón, la API no debe intentar localizar PostgreSQL mediante `localhost`. Docker Compose crea una red interna y permite localizar cada servicio mediante su nombre.
+
+La conexión utiliza:
+
+```text
+db
+```
+
+como host de PostgreSQL:
+
+```text
+postgresql+psycopg://usuario:contraseña@db:5432/sensorhub
+```
+
+#### Decisión tomada
+
+Se decidió utilizar dos contenedores independientes porque SensorHub y PostgreSQL tienen responsabilidades distintas.
+
+El servicio `api` construye SensorHub mediante el `Dockerfile`, mientras que el servicio `db` utiliza la imagen oficial:
+
+```text
+postgres:16
+```
+
+Dentro de la red creada por Docker Compose, la API se conecta a PostgreSQL utilizando `db` como nombre del host.
+
+También se decidió conservar SQLite como valor predeterminado cuando `DATABASE_URL` no esté definida. Esto permite ejecutar localmente la API y las pruebas sin depender obligatoriamente de PostgreSQL.
+
+Las credenciales locales se almacenaron en `.env`. Este archivo está excluido por Git y no debe subirse al repositorio.
+
+El repositorio conserva únicamente `.env.example`, que contiene valores de referencia y no una contraseña real.
+
+Finalmente, se decidió eliminar `app/init_db.py`, porque Alembic asumió la responsabilidad de crear y versionar el esquema de la base de datos. Conservar ambos mecanismos habría duplicado responsabilidades y podría producir diferencias entre el esquema creado directamente por SQLAlchemy y el historial de migraciones.
+
+#### Cambios realizados
+
+##### Dependencias
+
+Se modificó:
+
+```text
+requirements.txt
+```
+
+para agregar:
+
+```text
+psycopg[binary]
+alembic
+```
+
+Psycopg permite que SQLAlchemy se comunique con PostgreSQL.
+
+Alembic permite registrar, aplicar y revertir cambios en el esquema mediante migraciones versionadas.
+
+##### Configuración de la base de datos
+
+Se modificó:
+
+```text
+app/db.py
+```
+
+para obtener la conexión mediante:
+
+```text
+DATABASE_URL
+```
+
+Cuando la variable no está definida, la aplicación utiliza:
+
+```text
+sqlite:///./sensorhub.db
+```
+
+También se agregó la normalización de URLs.
+
+Las direcciones:
+
+```text
+postgres://
+postgresql://
+```
+
+se convierten a:
+
+```text
+postgresql+psycopg://
+```
+
+Además, `check_same_thread=False` se aplica únicamente cuando la conexión corresponde a SQLite, ya que es una configuración específica de ese motor.
+
+##### Variables de entorno
+
+Se creó:
+
+```text
+.env.example
+```
+
+con los valores de referencia:
+
+```text
+POSTGRES_USER=sensor
+POSTGRES_PASSWORD=change-me
+POSTGRES_DB=sensorhub
+```
+
+También se creó localmente:
+
+```text
+.env
+```
+
+con una contraseña de desarrollo.
+
+Se comprobó que `.env` estuviera excluido por `.gitignore` mediante:
+
+```text
+git check-ignore -v .env
+```
+
+La salida confirmó que el archivo no será incluido en el historial de Git.
+
+##### Docker Compose
+
+Se creó:
+
+```text
+docker-compose.yml
+```
+
+con los servicios:
+
+```text
+api
+db
+```
+
+El servicio `api`:
+
+- construye la imagen desde el `Dockerfile`;
+- publica el puerto 8000;
+- recibe `DATABASE_URL`;
+- depende de que PostgreSQL se encuentre saludable.
+
+El servicio `db`:
+
+- utiliza PostgreSQL 16;
+- recibe usuario, contraseña y nombre de la base mediante variables;
+- utiliza el volumen `pgdata`;
+- ejecuta un health check mediante `pg_isready`.
+
+Se validó la configuración mediante:
+
+```text
+docker compose config
+```
+
+sin mostrar en pantalla los valores expandidos.
+
+##### Persistencia
+
+Se creó el volumen nombrado:
+
+```text
+pgdata
+```
+
+Para comprobar la persistencia se realizó el siguiente procedimiento:
+
+```text
+1. Levantar API y PostgreSQL.
+2. Crear un sensor mediante la API.
+3. Ejecutar docker compose down.
+4. Crear nuevamente los contenedores.
+5. Consultar el mismo sensor.
+```
+
+El sensor continuó disponible después de eliminar y recrear los contenedores.
+
+Esto confirmó que la información estaba almacenada en el volumen y no en la capa temporal del contenedor.
+
+#### Configuración de Alembic
+
+Se inicializó Alembic mediante:
+
+```bash
+alembic init migrations
+```
+
+Este comando creó:
+
+```text
+alembic.ini
+migrations/
+├── README
+├── env.py
+├── script.py.mako
+└── versions/
+```
+
+Se modificó:
+
+```text
+migrations/env.py
+```
+
+para importar:
+
+```python
+from app.db import Base, get_database_url
+from app.models import Reading, Sensor
+```
+
+También se configuró:
+
+```python
+target_metadata = Base.metadata
+```
+
+De esta forma, Alembic puede comparar los modelos ORM de SensorHub con el esquema existente de la base de datos.
+
+La URL configurada en `alembic.ini` es reemplazada durante la ejecución por la dirección devuelta por:
+
+```python
+get_database_url()
+```
+
+Esto evita escribir una contraseña directamente en `alembic.ini`.
+
+#### Primera migración autogenerada
+
+La primera migración se generó utilizando una base SQLite temporal y vacía:
+
+```bash
+DATABASE_URL=sqlite:///./alembic_temp.db \
+alembic revision --autogenerate \
+  -m "esquema inicial de sensores y lecturas"
+```
+
+Se utilizó una base temporal porque el PostgreSQL inicial ya tenía sus tablas creadas mediante `app.init_db`.
+
+Si la migración se hubiera generado comparando los modelos con esa base ya construida, Alembic habría encontrado ambos esquemas iguales y podría haber generado una migración vacía.
+
+Alembic detectó:
+
+- la tabla `sensors`;
+- la tabla `readings`;
+- la clave foránea de `readings.sensor_id`;
+- el índice `ix_readings_sensor_id`.
+
+#### Revisión de la migración
+
+La migración autogenerada no se aceptó automáticamente.
+
+Se revisaron las funciones:
+
+```python
+upgrade()
+downgrade()
+```
+
+En `upgrade()` se confirmó que:
+
+1. `sensors` se crea primero;
+2. `readings` se crea después;
+3. `readings.sensor_id` referencia a `sensors.id`;
+4. se crea el índice `ix_readings_sensor_id`.
+
+En `downgrade()` se confirmó que:
+
+1. se elimina primero el índice;
+2. se elimina después `readings`;
+3. se elimina al final `sensors`.
+
+Este orden respeta la relación entre las tablas y evita intentar eliminar una tabla mientras otra todavía depende de ella.
+
+Ruff detectó ajustes de formato en el archivo generado automáticamente por Alembic.
+
+Se corrigieron:
+
+- la importación de `Sequence`;
+- el orden de imports;
+- el uso moderno del operador `|` para tipos;
+- una línea que superaba el límite de 88 caracteres.
+
+No se modificó la lógica de la migración.
+
+#### Actualización del Dockerfile
+
+Se modificó el `Dockerfile` para copiar dentro de la imagen:
+
+```text
+app/
+alembic.ini
+migrations/
+```
+
+El comando de inicio anterior era:
+
+```text
+python -m app.init_db
+```
+
+Se reemplazó por:
+
+```text
+python -m alembic upgrade head
+```
+
+El nuevo flujo de arranque es:
+
+```text
+alembic upgrade head
+→ comprobar migraciones pendientes
+→ aplicar las migraciones necesarias
+→ iniciar Uvicorn
+```
+
+El comando configurado inicia la API solamente si las migraciones se aplican correctamente.
+
+#### Prueba desde una base completamente vacía
+
+Para comprobar que Alembic realmente podía reconstruir el esquema se ejecutó:
+
+```text
+docker compose down --volumes
+```
+
+Este comando eliminó:
+
+- el contenedor de la API;
+- el contenedor de PostgreSQL;
+- la red de Compose;
+- el volumen `pgdata`;
+- las tablas y datos existentes.
+
+Después se reconstruyeron los servicios:
+
+```text
+docker compose up --build -d
+```
+
+Los registros de la API mostraron:
+
+```text
+Context impl PostgresqlImpl
+Running upgrade -> d615b8bbf188
+```
+
+Después de aplicar la migración, Uvicorn inició normalmente.
+
+Dentro de PostgreSQL se comprobaron las tablas:
+
+```text
+alembic_version
+readings
+sensors
+```
+
+También se ejecutó:
+
+```text
+python -m alembic current
+```
+
+La revisión aplicada fue:
+
+```text
+d615b8bbf188 (head)
+```
+
+Esto confirmó que la base estaba sincronizada con la última migración disponible.
+
+#### Eliminación de `app/init_db.py`
+
+Se eliminó:
+
+```text
+app/init_db.py
+```
+
+porque ya no era utilizado por:
+
+- el `Dockerfile`;
+- Docker Compose;
+- los endpoints;
+- los servicios;
+- los repositorios;
+- las pruebas.
+
+Alembic quedó como el único mecanismo vigente para administrar el esquema.
+
+Las referencias históricas a `app.init_db` se conservaron en `AI_LOG.md` y en los ADR correspondientes, porque documentan cómo funcionaba el proyecto durante la Semana 3.
+
+El `README.md` fue actualizado para sustituir las instrucciones vigentes de `app.init_db` por:
+
+```text
+python -m alembic upgrade head
+```
+
+#### Mejora de la cobertura
+
+Después de eliminar `app/init_db.py`, la cobertura aumentó de:
+
+```text
+87.89 %
+```
+
+a:
+
+```text
+89.26 %
+```
+
+Se decidió elevarla por encima del 90 % mediante pruebas de comportamiento útil, evitando crear pruebas artificiales únicamente para aumentar el porcentaje.
+
+Se creó:
+
+```text
+tests/test_infrastructure.py
+```
+
+con pruebas para:
+
+- normalizar una URL que comienza con `postgres://`;
+- normalizar una URL que comienza con `postgresql://`;
+- comprobar que `get_session()` entrega una sesión de SQLAlchemy;
+- comprobar que `GET /health` responde correctamente.
+
+Estas pruebas cubren comportamiento de:
+
+```text
+app/db.py
+app/dependencies.py
+app/main.py
+```
+
+El resultado final fue:
+
+```text
+61 pruebas aprobadas
+Cobertura total: 90.38 %
+```
+
+#### Resultado de la validación
+
+Se ejecutaron las siguientes verificaciones:
+
+```bash
+python -m ruff check app tests migrations
+mypy app
+python -m pytest
+docker compose config
+docker compose up --build -d
+docker compose logs api
+curl -i http://localhost:8000/health
+curl -i http://localhost:8000/sensors
+```
+
+Los resultados finales fueron:
+
+```text
+Ruff: sin errores
+Mypy: sin errores
+Pytest: 61 pruebas aprobadas
+Cobertura total: 90.38 %
+Docker Compose: configuración válida
+PostgreSQL: healthy
+Alembic: revisión inicial aplicada
+GET /health: 200 OK
+GET /sensors: 200 OK
+Swagger: accesible
+```
+
+#### Justificación
+
+Docker Compose permite declarar y reproducir el entorno completo de SensorHub mediante un solo archivo.
+
+El flujo final es:
+
+```text
+docker compose up
+→ crear la red interna
+→ iniciar PostgreSQL
+→ comprobar su health check
+→ iniciar la API
+→ Alembic revisa y aplica migraciones
+→ Uvicorn inicia SensorHub
+→ la API utiliza PostgreSQL mediante DATABASE_URL
+```
+
+La separación entre código y configuración permite utilizar distintos motores y credenciales sin modificar la implementación de la aplicación.
+
+El volumen `pgdata` conserva la información aunque los contenedores sean eliminados y creados nuevamente.
+
+Alembic permite reconstruir una base vacía y mantener un historial versionado de los cambios del esquema.
+
+Las pruebas de infraestructura elevaron la cobertura al 90.38 % comprobando comportamiento real de configuración, sesiones y disponibilidad de la API.
+
+#### Decisión final
+
+Se decidió considerar terminada la actividad del martes porque se cumplen los siguientes puntos:
+
+- Docker Compose levanta la API y PostgreSQL;
+- PostgreSQL alcanza el estado `healthy`;
+- la API se conecta mediante `DATABASE_URL`;
+- SQLite permanece disponible como valor local predeterminado;
+- las credenciales locales no se registran en Git;
+- PostgreSQL conserva los datos mediante un volumen;
+- Alembic administra el esquema;
+- la migración inicial fue generada y revisada;
+- una base vacía puede reconstruirse mediante `alembic upgrade head`;
+- Ruff y Mypy terminan sin errores;
+- las 61 pruebas están aprobadas;
+- la cobertura alcanzó 90.38 %;
+- `/health` y `/sensors` responden correctamente.
+
+La actividad del martes queda completada con SensorHub y PostgreSQL funcionando mediante Docker Compose, persistencia por volumen, configuración protegida mediante variables de entorno y una primera migración de Alembic aplicada correctamente.
