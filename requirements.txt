@@ -9,3 +9,5 @@ pytest-cov==7.1.0
 ruff==0.15.21
 mypy==2.2.0
 pre-commit==4.6.0
+psycopg[binary]==3.3.4
+alembic==1.18.5

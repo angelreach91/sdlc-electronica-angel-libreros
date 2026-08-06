@@ -2,9 +2,11 @@
 
 SensorHub es una API REST desarrollada con FastAPI para administrar sensores y sus lecturas.
 
-El proyecto utiliza una arquitectura en cuatro capas, persistencia con SQLAlchemy 2.x y SQLite, validación mediante Pydantic, documentación automática con Swagger y pruebas automatizadas con Pytest.
+El proyecto utiliza una arquitectura en cuatro capas, persistencia con SQLAlchemy 2.x, validación mediante Pydantic, migraciones con Alembic, documentación automática con Swagger y pruebas automatizadas con Pytest.
 
-Este repositorio también conserva los ejercicios realizados durante las semanas anteriores del curso como material histórico.
+La aplicación utiliza SQLite de manera predeterminada para la ejecución local y puede conectarse a PostgreSQL mediante la variable de entorno `DATABASE_URL`. También puede ejecutarse dentro de contenedores mediante Docker y Docker Compose.
+
+Este repositorio conserva los ejercicios realizados durante las semanas anteriores del curso como material histórico.
 
 ## Funcionalidades
 
@@ -47,7 +49,7 @@ La API también rechaza lecturas cuando:
 
 ## Arquitectura
 
-La aplicación sigue este flujo:
+La aplicación sigue el siguiente flujo:
 
 ```text
 Router
@@ -58,12 +60,12 @@ Repository
   ↓
 Model
   ↓
-SQLite
+SQLite o PostgreSQL
 ```
 
 ### Routers
 
-Reciben solicitudes HTTP, delegan las operaciones y generan las respuestas correspondientes.
+Reciben las solicitudes HTTP, delegan las operaciones y generan las respuestas correspondientes.
 
 Archivos principales:
 
@@ -90,7 +92,7 @@ Archivos principales:
 
 ### Models
 
-Representan las tablas de SQLite mediante la API tipada de SQLAlchemy 2.x.
+Representan las tablas de la base de datos mediante la API tipada de SQLAlchemy 2.x.
 
 Archivos principales:
 
@@ -114,7 +116,6 @@ app/
 ├── db.py
 ├── dependencies.py
 ├── exceptions.py
-├── init_db.py
 ├── sensor_types.py
 ├── models/
 ├── repositories/
@@ -122,24 +123,34 @@ app/
 ├── schemas/
 └── services/
 
+migrations/
+├── versions/
+├── env.py
+└── script.py.mako
+
 tests/
 docs/adr/
 semana1/
 semana2/
 AI_LOG.md
+README.md
+Dockerfile
+docker-compose.yml
+.env.example
+alembic.ini
 requirements.txt
 pyproject.toml
 ```
 
-## Instalación
+## Instalación local
 
-Desde la raíz del repositorio:
+Desde la raíz del repositorio, crea un entorno virtual:
 
 ```bash
 python -m venv .venv
 ```
 
-En Linux o WSL:
+En Linux o WSL, actívalo con:
 
 ```bash
 source .venv/bin/activate
@@ -151,25 +162,82 @@ Instala las dependencias:
 python -m pip install -r requirements.txt
 ```
 
-## Inicialización de la base de datos
+## Configuración de la base de datos
 
-Crea las tablas de SQLite con:
-
-```bash
-python -m app.init_db
-```
-
-La aplicación utiliza por defecto:
+SensorHub obtiene la conexión mediante la variable de entorno:
 
 ```text
-sensorhub.db
+DATABASE_URL
 ```
 
-Este archivo es local y no se registra en Git.
+Si la variable no está definida, la aplicación utiliza SQLite:
 
-## Ejecución de la API
+```text
+sqlite:///./sensorhub.db
+```
 
-Desde la raíz del repositorio y con el entorno virtual activado:
+Por tanto, la ejecución local puede utilizar `sensorhub.db` sin configuración adicional.
+
+Para PostgreSQL puede utilizarse una dirección con esta estructura:
+
+```text
+postgresql+psycopg://usuario:contraseña@host:5432/base_de_datos
+```
+
+La aplicación también normaliza direcciones que comienzan con:
+
+```text
+postgres://
+postgresql://
+```
+
+para utilizar el controlador `psycopg`.
+
+## Migraciones con Alembic
+
+La estructura de la base de datos se administra mediante migraciones de Alembic.
+
+Para aplicar todas las migraciones pendientes:
+
+```bash
+python -m alembic upgrade head
+```
+
+Para consultar la migración actualmente aplicada:
+
+```bash
+python -m alembic current
+```
+
+Para consultar el historial disponible:
+
+```bash
+python -m alembic history
+```
+
+La migración inicial crea:
+
+- la tabla `sensors`;
+- la tabla `readings`;
+- la relación entre lecturas y sensores;
+- el índice de `sensor_id`;
+- la tabla interna `alembic_version`.
+
+Los archivos de migración se encuentran en:
+
+```text
+migrations/versions/
+```
+
+## Ejecución local de la API
+
+Primero aplica las migraciones:
+
+```bash
+python -m alembic upgrade head
+```
+
+Después inicia la API:
 
 ```bash
 python -m uvicorn app.main:app --reload
@@ -185,6 +253,129 @@ La documentación Swagger estará disponible en:
 
 ```text
 http://127.0.0.1:8000/docs
+```
+
+El estado del servicio puede comprobarse en:
+
+```text
+http://127.0.0.1:8000/health
+```
+
+## Ejecución con Docker
+
+El `Dockerfile` utiliza:
+
+```text
+python:3.12-slim
+```
+
+La imagen instala las dependencias, copia la aplicación y las migraciones, aplica `alembic upgrade head` e inicia Uvicorn en el puerto 8000.
+
+Construye la imagen con:
+
+```bash
+docker build -t sensorhub:dev .
+```
+
+Ejecuta un contenedor con SQLite mediante:
+
+```bash
+docker run --rm \
+  -p 127.0.0.1:8000:8000 \
+  sensorhub:dev
+```
+
+## Ejecución con Docker Compose y PostgreSQL
+
+Docker Compose levanta dos servicios:
+
+```text
+api
+db
+```
+
+El servicio `api` ejecuta SensorHub y el servicio `db` ejecuta PostgreSQL 16.
+
+### Preparar las variables locales
+
+Copia el archivo de ejemplo:
+
+```bash
+cp .env.example .env
+```
+
+Después modifica la contraseña dentro de `.env`.
+
+Ejemplo:
+
+```text
+POSTGRES_USER=sensor
+POSTGRES_PASSWORD=contraseña-local
+POSTGRES_DB=sensorhub
+```
+
+El archivo `.env` contiene configuración local y no se registra en Git.
+
+### Levantar los servicios
+
+```bash
+docker compose up --build -d
+```
+
+Consulta su estado:
+
+```bash
+docker compose ps
+```
+
+Consulta los registros de la API:
+
+```bash
+docker compose logs api
+```
+
+Consulta los registros de PostgreSQL:
+
+```bash
+docker compose logs db
+```
+
+Al iniciar la API, Alembic aplica automáticamente las migraciones antes de ejecutar Uvicorn.
+
+### Detener los servicios
+
+Para eliminar los contenedores y la red, conservando los datos:
+
+```bash
+docker compose down
+```
+
+Para eliminar también el volumen y todos los datos de PostgreSQL:
+
+```bash
+docker compose down --volumes
+```
+
+Este último comando debe utilizarse con precaución porque elimina la base de datos local del entorno Docker.
+
+## Persistencia de PostgreSQL
+
+Docker Compose utiliza un volumen nombrado:
+
+```text
+pgdata
+```
+
+Este volumen conserva los datos aunque los contenedores sean eliminados y creados nuevamente.
+
+El flujo de persistencia es:
+
+```text
+PostgreSQL
+→ volumen pgdata
+→ docker compose down
+→ nuevos contenedores
+→ datos recuperados
 ```
 
 ## Endpoints principales
@@ -266,7 +457,7 @@ Solicitud HTTP
 → Service
 → Repository
 → Modelo SQLAlchemy
-→ SQLite
+→ SQLite o PostgreSQL
 → Respuesta HTTP
 ```
 
@@ -287,23 +478,38 @@ python -m pytest --no-cov -q
 Revisa el formato y las reglas de calidad:
 
 ```bash
-ruff check app tests
+python -m ruff check app tests migrations
 ```
 
 Comprueba el tipado:
 
 ```bash
-mypy app tests
+mypy app
 ```
 
-Estado verificado después de atender la revisión por pares:
+Valida la configuración de Docker Compose sin mostrar los valores expandidos:
+
+```bash
+docker compose config > /dev/null && echo "Configuración válida"
+```
+
+Consulta la migración aplicada dentro del contenedor:
+
+```bash
+docker compose exec api python -m alembic current
+```
+
+Estado verificado después de incorporar Docker Compose, PostgreSQL y Alembic:
 
 ```text
 57 pruebas aprobadas
-Cobertura total: 88.09 %
+Cobertura total: 87.89 %
 Ruff: sin errores
 Mypy: sin errores
-Swagger: validado manualmente
+Docker Compose: API y PostgreSQL funcionando
+PostgreSQL: estado healthy
+Alembic: migración inicial aplicada
+Swagger: accesible
 ```
 
 ## Pruebas implementadas
@@ -317,6 +523,32 @@ La suite incluye:
 
 Las bases temporales evitan modificar `sensorhub.db` durante las pruebas.
 
+## Seguridad de configuración
+
+Los valores locales de PostgreSQL se almacenan en:
+
+```text
+.env
+```
+
+Este archivo se encuentra excluido mediante `.gitignore`.
+
+El repositorio solo conserva:
+
+```text
+.env.example
+```
+
+con valores de referencia que deben sustituirse localmente.
+
+No deben almacenarse contraseñas reales en:
+
+- el código fuente;
+- `docker-compose.yml`;
+- `README.md`;
+- `AI_LOG.md`;
+- el historial de Git.
+
 ## Decisiones arquitectónicas
 
 Las decisiones principales se documentan en:
@@ -327,10 +559,13 @@ docs/adr/
 
 Entre ellas se encuentran:
 
-- persistencia mediante SQLAlchemy 2.x y SQLite;
+- persistencia mediante SQLAlchemy 2.x;
+- uso local de SQLite;
+- conexión configurable con PostgreSQL;
 - arquitectura en capas;
 - inyección de dependencias con FastAPI;
-- separación entre modelos ORM y esquemas Pydantic.
+- separación entre modelos ORM y esquemas Pydantic;
+- uso de Alembic para versionar el esquema.
 
 ## Historial del curso
 
@@ -338,9 +573,9 @@ Las carpetas semanales conservan los ejercicios anteriores:
 
 - `semana1/`: principios SOLID y driver UART;
 - `semana2/`: Scrum, historias de usuario y TDD;
-- `app/`: producto SensorHub desarrollado durante la Semana 3.
+- `app/`: producto SensorHub desarrollado a partir de la Semana 3.
 
-El driver UART sigue disponible dentro del historial de la Semana 1, pero ya no representa el producto principal del repositorio.
+El driver UART continúa disponible dentro del historial de la Semana 1, pero ya no representa el producto principal del repositorio.
 
 ## Uso de inteligencia artificial
 
