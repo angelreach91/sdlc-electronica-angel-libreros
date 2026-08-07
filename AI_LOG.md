@@ -3089,3 +3089,110 @@ Se decidió considerar terminada la actividad del martes porque se cumplen los s
 - `/health` y `/sensors` responden correctamente.
 
 La actividad del martes queda completada con SensorHub y PostgreSQL funcionando mediante Docker Compose, persistencia por volumen, configuración protegida mediante variables de entorno y una primera migración de Alembic aplicada correctamente.
+
+## Semana 4 — Miércoles: integración continua con GitHub Actions
+
+### Objetivo
+
+Crear un pipeline de integración continua que ejecutara automáticamente Ruff, Mypy y Pytest con cobertura al realizar un `push` o abrir un Pull Request hacia `main`.
+
+### Herramienta utilizada
+
+`ChatGPT`
+
+### Prompt utilizado
+
+> Ayúdame a implementar paso a paso un workflow de GitHub Actions para SensorHub. Necesito ejecutar Ruff, Mypy y Pytest con cobertura, comprender cada parte del archivo YAML, comprobar un fallo controlado y recuperar posteriormente el pipeline en verde.
+
+### Propuesta de la IA
+
+La IA propuso crear:
+
+```text
+.github/workflows/ci.yml
+```
+
+con un job ejecutado en `ubuntu-latest` y Python 3.12.
+
+El pipeline quedó organizado para:
+
+```text
+Descargar el repositorio
+→ configurar Python
+→ instalar dependencias
+→ ejecutar Ruff
+→ ejecutar Mypy
+→ ejecutar Pytest y cobertura
+```
+
+También se propuso activar el workflow mediante los eventos:
+
+```text
+push
+pull_request hacia main
+```
+
+Además, la IA explicó los conceptos de:
+
+- workflow;
+- evento;
+- job;
+- runner;
+- step;
+- check dentro de un Pull Request.
+
+### Decisión tomada
+
+Se decidió utilizar los mismos comandos que ya habían sido validados localmente:
+
+```bash
+python -m ruff check app tests migrations
+python -m mypy app
+python -m pytest
+```
+
+También se decidió mantener Python 3.12 para que el entorno de GitHub Actions coincidiera con el utilizado en Docker.
+
+Se aceptó realizar un fallo controlado modificando temporalmente una prueba para confirmar que el pipeline detectara errores reales.
+
+### Uso de la IA durante la validación
+
+La IA guio el proceso para:
+
+- crear el workflow;
+- revisar su estructura;
+- realizar el primer `push`;
+- interpretar la ejecución exitosa;
+- abrir el Pull Request;
+- provocar una prueba fallida;
+- localizar el error en los logs;
+- restaurar la prueba correcta;
+- comprobar que el pipeline regresara a verde;
+- agregar el badge de CI al `README.md`.
+
+La prueba modificada esperaba temporalmente un código `201` cuando `/health` respondía correctamente con `200`.
+
+GitHub Actions detectó el fallo y mostró:
+
+```text
+assert 200 == 201
+1 failed, 60 passed
+```
+
+Después de restaurar la prueba, los checks de `push` y `pull_request` volvieron a completarse correctamente.
+
+### Resultado
+
+```text
+Workflow: CI
+Python: 3.12
+Ruff: aprobado
+Mypy: aprobado
+Pytest: aprobado
+Cobertura: superior al 90 %
+Push: exitoso
+Pull Request: exitoso
+Badge de CI: agregado
+```
+
+La inteligencia artificial se utilizó como apoyo para comprender GitHub Actions, construir el archivo YAML, interpretar los resultados y diagnosticar el fallo controlado. Las modificaciones fueron revisadas y ejecutadas manualmente antes de incorporarlas al proyecto.
