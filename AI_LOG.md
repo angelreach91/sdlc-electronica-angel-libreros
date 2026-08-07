@@ -3196,3 +3196,69 @@ Badge de CI: agregado
 ```
 
 La inteligencia artificial se utilizó como apoyo para comprender GitHub Actions, construir el archivo YAML, interpretar los resultados y diagnosticar el fallo controlado. Las modificaciones fueron revisadas y ejecutadas manualmente antes de incorporarlas al proyecto.
+
+## Semana 4 — Jueves: despliegue continuo en Render
+
+### Objetivo
+
+Desplegar SensorHub en Render mediante un Blueprint con PostgreSQL y comprobar que la API pueda actualizarse automáticamente después de integrar cambios en `main`.
+
+### Herramienta utilizada
+
+`ChatGPT`
+
+### Prompt utilizado
+
+> Ayúdame a desplegar SensorHub en Render siguiendo la guía de infraestructura como código. Quiero utilizar `render.yaml`, PostgreSQL, Docker, Alembic y comprobar que la API quede disponible mediante una URL pública.
+
+### Uso de la IA
+
+La IA se utilizó como guía para:
+
+- adaptar el `Dockerfile` al puerto dinámico proporcionado por Render;
+- crear y revisar `render.yaml`;
+- configurar el Blueprint con `sensorhub-api` y `sensorhub-db`;
+- conectar Render con el repositorio de GitHub;
+- interpretar los logs del primer despliegue;
+- diagnosticar un problema temporal de enrutamiento de Render;
+- comprobar `/health`, `/docs` y `/openapi.json`;
+- validar escritura y lectura de datos utilizando PostgreSQL de Render;
+- comprobar que los datos permanecieran después de volver a desplegar la API.
+
+### Decisiones tomadas
+
+Se decidió utilizar el mismo `Dockerfile` tanto localmente como en Render mediante:
+
+```text
+${PORT:-8000}
+```
+
+También se mantuvo la ejecución de:
+
+```text
+alembic upgrade head
+```
+
+antes del inicio de Uvicorn para garantizar que el esquema exista antes de recibir tráfico.
+
+La conexión PostgreSQL se obtuvo mediante `DATABASE_URL` proporcionada automáticamente por el Blueprint, evitando almacenar credenciales en el repositorio.
+
+### Resultado
+
+Se obtuvo una API pública funcional en:
+
+```text
+https://sensorhub-api-8yfj.onrender.com
+```
+
+Se comprobaron correctamente:
+
+```text
+/health       → 200 OK
+/docs         → Swagger disponible
+/openapi.json → 200 OK
+```
+
+También se creó el sensor `sensor-render-01`, se recuperó posteriormente mediante la API y se comprobó que continuaba almacenado después de un nuevo despliegue de la instancia.
+
+La IA se utilizó como apoyo durante la configuración, validación e interpretación de los resultados; las decisiones y comprobaciones fueron ejecutadas manualmente.
