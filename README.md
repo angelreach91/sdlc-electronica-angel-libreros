@@ -1,5 +1,7 @@
 # SensorHub
 
+[![CI](https://github.com/angelreach91/sdlc-electronica-angel-libreros/actions/workflows/ci.yml/badge.svg)](https://github.com/angelreach91/sdlc-electronica-angel-libreros/actions/workflows/ci.yml)
+
 SensorHub es una API REST desarrollada con FastAPI para administrar sensores y sus lecturas.
 
 El proyecto utiliza una arquitectura en cuatro capas, persistencia con SQLAlchemy 2.x, validación mediante Pydantic, migraciones con Alembic, documentación automática con Swagger y pruebas automatizadas con Pytest.
