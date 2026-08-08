@@ -3090,21 +3090,21 @@ Se decidió considerar terminada la actividad del martes porque se cumplen los s
 
 La actividad del martes queda completada con SensorHub y PostgreSQL funcionando mediante Docker Compose, persistencia por volumen, configuración protegida mediante variables de entorno y una primera migración de Alembic aplicada correctamente.
 
-## Semana 4 — Miércoles: integración continua con GitHub Actions
+### Miércoles: integración continua con GitHub Actions
 
-### Objetivo
+#### Objetivo
 
 Crear un pipeline de integración continua que ejecutara automáticamente Ruff, Mypy y Pytest con cobertura al realizar un `push` o abrir un Pull Request hacia `main`.
 
-### Herramienta utilizada
+#### Herramienta utilizada
 
 `ChatGPT`
 
-### Prompt utilizado
+#### Prompt utilizado
 
 > Ayúdame a implementar paso a paso un workflow de GitHub Actions para SensorHub. Necesito ejecutar Ruff, Mypy y Pytest con cobertura, comprender cada parte del archivo YAML, comprobar un fallo controlado y recuperar posteriormente el pipeline en verde.
 
-### Propuesta de la IA
+#### Propuesta de la IA
 
 La IA propuso crear:
 
@@ -3141,7 +3141,7 @@ Además, la IA explicó los conceptos de:
 - step;
 - check dentro de un Pull Request.
 
-### Decisión tomada
+#### Decisión tomada
 
 Se decidió utilizar los mismos comandos que ya habían sido validados localmente:
 
@@ -3155,7 +3155,7 @@ También se decidió mantener Python 3.12 para que el entorno de GitHub Actions 
 
 Se aceptó realizar un fallo controlado modificando temporalmente una prueba para confirmar que el pipeline detectara errores reales.
 
-### Uso de la IA durante la validación
+#### Uso de la IA durante la validación
 
 La IA guio el proceso para:
 
@@ -3181,7 +3181,7 @@ assert 200 == 201
 
 Después de restaurar la prueba, los checks de `push` y `pull_request` volvieron a completarse correctamente.
 
-### Resultado
+#### Resultado
 
 ```text
 Workflow: CI
@@ -3197,21 +3197,21 @@ Badge de CI: agregado
 
 La inteligencia artificial se utilizó como apoyo para comprender GitHub Actions, construir el archivo YAML, interpretar los resultados y diagnosticar el fallo controlado. Las modificaciones fueron revisadas y ejecutadas manualmente antes de incorporarlas al proyecto.
 
-## Semana 4 — Jueves: despliegue continuo en Render
+### Jueves: despliegue continuo en Render
 
-### Objetivo
+#### Objetivo
 
 Desplegar SensorHub en Render mediante un Blueprint con PostgreSQL y comprobar que la API pueda actualizarse automáticamente después de integrar cambios en `main`.
 
-### Herramienta utilizada
+#### Herramienta utilizada
 
 `ChatGPT`
 
-### Prompt utilizado
+#### Prompt utilizado
 
 > Ayúdame a desplegar SensorHub en Render siguiendo la guía de infraestructura como código. Quiero utilizar `render.yaml`, PostgreSQL, Docker, Alembic y comprobar que la API quede disponible mediante una URL pública.
 
-### Uso de la IA
+#### Uso de la IA
 
 La IA se utilizó como guía para:
 
@@ -3225,7 +3225,7 @@ La IA se utilizó como guía para:
 - validar escritura y lectura de datos utilizando PostgreSQL de Render;
 - comprobar que los datos permanecieran después de volver a desplegar la API.
 
-### Decisiones tomadas
+#### Decisiones tomadas
 
 Se decidió utilizar el mismo `Dockerfile` tanto localmente como en Render mediante:
 
@@ -3243,7 +3243,7 @@ antes del inicio de Uvicorn para garantizar que el esquema exista antes de recib
 
 La conexión PostgreSQL se obtuvo mediante `DATABASE_URL` proporcionada automáticamente por el Blueprint, evitando almacenar credenciales en el repositorio.
 
-### Resultado
+#### Resultado
 
 Se obtuvo una API pública funcional en:
 
@@ -3262,3 +3262,25 @@ Se comprobaron correctamente:
 También se creó el sensor `sensor-render-01`, se recuperó posteriormente mediante la API y se comprobó que continuaba almacenado después de un nuevo despliegue de la instancia.
 
 La IA se utilizó como apoyo durante la configuración, validación e interpretación de los resultados; las decisiones y comprobaciones fueron ejecutadas manualmente.
+
+### Viernes: cierre de la Evaluación 2
+
+#### Herramienta utilizada
+
+`ChatGPT`
+
+#### Uso de la IA
+
+La IA se utilizó como apoyo para revisar la rúbrica y el checklist final de la Semana 4, verificar los entregables construidos durante la semana y preparar las comprobaciones finales antes de la entrega.
+
+También se utilizó para:
+
+- revisar el funcionamiento final de Docker Compose con la API y PostgreSQL;
+- comprobar el estado de Alembic y PostgreSQL;
+- auditar el historial de Git en busca de posibles secretos;
+- distinguir valores de ejemplo de credenciales reales;
+- identificar que la URL pública de Render debía quedar documentada en el `README.md`.
+
+#### Resultado
+
+Se confirmó que la aplicación cumple con los requisitos del nivel **Estándar esperado**: Docker Compose con PostgreSQL, pipeline de CI funcional, despliegue público en Render, despliegue continuo demostrado y configuración mediante variables de entorno sin secretos reales detectados en el historial.
