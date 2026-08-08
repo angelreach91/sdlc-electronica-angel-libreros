@@ -10,6 +10,26 @@ La aplicación utiliza SQLite de manera predeterminada para la ejecución local 
 
 Este repositorio conserva los ejercicios realizados durante las semanas anteriores del curso como material histórico.
 
+
+## Despliegue en producción
+
+SensorHub se encuentra desplegado públicamente en Render:
+
+```text
+https://sensorhub-api-8yfj.onrender.com
+```
+
+El estado del servicio puede comprobarse en:
+
+```text
+https://sensorhub-api-8yfj.onrender.com/health
+```
+
+La documentación Swagger está disponible en:
+
+```text
+https://sensorhub-api-8yfj.onrender.com/docs
+```
 ## Funcionalidades
 
 SensorHub permite:
