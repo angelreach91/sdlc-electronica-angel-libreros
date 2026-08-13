@@ -261,6 +261,81 @@ def test_create_reading_rejects_invalid_measurement(
     assert repository.add_calls == []
 
 
+def test_create_reading_rejects_nan_temperature(
+    context: TestContext,
+) -> None:
+    service, repository, _ = context
+
+    with pytest.raises(ValueError):
+        service.create_reading(
+            sensor_id="TEMP-01",
+            value=float("nan"),
+            unit=SensorUnit.CELSIUS,
+        )
+
+    assert repository.add_calls == []
+
+
+def test_create_reading_rejects_positive_infinite_temperature(
+    context: TestContext,
+) -> None:
+    service, repository, _ = context
+
+    with pytest.raises(ValueError):
+        service.create_reading(
+            sensor_id="TEMP-01",
+            value=float("inf"),
+            unit=SensorUnit.CELSIUS,
+        )
+
+    assert repository.add_calls == []
+
+
+def test_create_reading_accepts_absolute_zero_temperature(
+    context: TestContext,
+) -> None:
+    service, repository, _ = context
+
+    reading = service.create_reading(
+        sensor_id="TEMP-01",
+        value=-273.15,
+        unit=SensorUnit.CELSIUS,
+    )
+
+    assert reading.value == -273.15
+    assert repository.add_calls == [reading]
+
+
+def test_create_reading_accepts_zero_humidity(
+    context: TestContext,
+) -> None:
+    service, repository, _ = context
+
+    reading = service.create_reading(
+        sensor_id="HUM-01",
+        value=0.0,
+        unit=SensorUnit.PERCENT,
+    )
+
+    assert reading.value == 0.0
+    assert repository.add_calls == [reading]
+
+
+def test_create_reading_accepts_full_humidity(
+    context: TestContext,
+) -> None:
+    service, repository, _ = context
+
+    reading = service.create_reading(
+        sensor_id="HUM-01",
+        value=100.0,
+        unit=SensorUnit.PERCENT,
+    )
+
+    assert reading.value == 100.0
+    assert repository.add_calls == [reading]
+
+
 def test_create_reading_rejects_unknown_sensor(
     context: TestContext,
 ) -> None:
@@ -377,6 +452,21 @@ def test_list_by_sensor_rejects_invalid_arguments(
             offset=offset,
             from_date=from_date,
             to_date=to_date,
+        )
+
+    assert repository.list_arguments is None
+
+
+def test_list_by_sensor_rejects_mixed_datetime_awareness(
+    context: TestContext,
+) -> None:
+    service, repository, _ = context
+
+    with pytest.raises(ValueError):
+        service.list_by_sensor(
+            "TEMP-01",
+            from_date=datetime(2026, 7, 28),
+            to_date=RANGE_END,
         )
 
     assert repository.list_arguments is None

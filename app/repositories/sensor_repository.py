@@ -7,6 +7,14 @@ from sqlalchemy.orm import Session
 from app.models.sensor import Sensor
 
 
+class SensorLookupRepository(Protocol):
+    """Define la consulta de sensores requerida por lecturas."""
+
+    def get_by_id(self, sensor_id: str) -> Sensor | None:
+        """Busca un sensor mediante su identificador."""
+        ...
+
+
 class SensorRepository(Protocol):
     """Define las operaciones de persistencia requeridas para sensores."""
 

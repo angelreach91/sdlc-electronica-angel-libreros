@@ -1,10 +1,11 @@
 from collections.abc import Callable
 from datetime import datetime, timezone
+from math import isfinite
 
 from app.models.reading import Reading
 from app.models.sensor import Sensor
 from app.repositories.reading_repository import ReadingRepository
-from app.repositories.sensor_repository import SensorRepository
+from app.repositories.sensor_repository import SensorLookupRepository
 from app.sensor_types import (
     EXPECTED_UNIT_BY_TYPE,
     SensorType,
@@ -24,7 +25,7 @@ class ReadingService:
     def __init__(
         self,
         reading_repository: ReadingRepository,
-        sensor_repository: SensorRepository,
+        sensor_repository: SensorLookupRepository,
         clock: Callable[[], datetime] = utc_now,
     ) -> None:
         self._reading_repository = reading_repository
@@ -82,12 +83,20 @@ class ReadingService:
         if offset < 0:
             raise ValueError("offset no puede ser negativo")
 
-        if (
-            from_date is not None
-            and to_date is not None
-            and from_date > to_date
-        ):
-            raise ValueError("from_date no puede ser posterior a to_date")
+        if from_date is not None and to_date is not None:
+            from_date_is_aware = from_date.utcoffset() is not None
+            to_date_is_aware = to_date.utcoffset() is not None
+
+            if from_date_is_aware != to_date_is_aware:
+                raise ValueError(
+                    "from_date y to_date deben tener la misma "
+                    "conciencia de zona horaria"
+                )
+
+            if from_date > to_date:
+                raise ValueError(
+                    "from_date no puede ser posterior a to_date"
+                )
 
         return self._reading_repository.list_by_sensor(
             normalized_sensor_id,
@@ -180,6 +189,9 @@ class ReadingService:
                 f"la unidad {unit.value} no corresponde "
                 f"al sensor {sensor.id}"
             )
+
+        if not isfinite(value):
+            raise ValueError("el valor de medición debe ser finito")
 
         if (
             sensor_type == SensorType.TEMPERATURE

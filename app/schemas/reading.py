@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, field_validator
 
 from app.sensor_types import SensorUnit
 
@@ -17,6 +17,14 @@ class ReadingUpdate(BaseModel):
 
     value: float | None = None
     unit: SensorUnit | None = None
+
+    @field_validator("value", "unit", mode="before")
+    @classmethod
+    def reject_explicit_null(cls, value: object) -> object:
+        if value is None:
+            raise ValueError("el campo no puede ser null")
+
+        return value
 
 
 class ReadingResponse(BaseModel):
