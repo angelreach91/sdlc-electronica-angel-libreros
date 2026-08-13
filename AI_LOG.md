@@ -3438,3 +3438,219 @@ superando el mínimo de cobertura del 80 % configurado en el proyecto.
 Se decidió conservar el cambio generado por Aider porque la función es sencilla, cumple con las restricciones solicitadas y pasó las comprobaciones de calidad realizadas.
 
 La principal conclusión del ejercicio es que Aider aporta mayor trazabilidad que una conversación convencional con Copilot, pero requiere una configuración inicial más compleja y depende de un proveedor externo de modelos.
+
+## Miércoles — Code review asistido por IA y pruebas de casos borde
+
+### Objetivo
+
+Utilizar IA como apoyo durante un code review real de `ReadingService`, evaluando sus sugerencias con criterio propio antes de modificar el código. La revisión se enfocó en principios SOLID, casos borde, seguridad, rendimiento y validaciones que pudieran permitir comportamientos incorrectos.
+
+### Herramienta
+
+Codex integrado en VS Code.
+
+Para la primera etapa se configuró en modo de solo lectura mediante:
+
+```toml
+sandbox_mode = "read-only"
+```
+
+Esto permitió realizar la auditoría sin que la IA modificara automáticamente el repositorio.
+
+### Primera solicitud a la IA
+
+Se pidió a Codex revisar `app/services/reading_service.py` como un ingeniero senior durante un code review y buscar:
+
+- posibles violaciones de SOLID;
+- casos borde no manejados;
+- riesgos de seguridad;
+- problemas de rendimiento;
+- validaciones incompletas;
+- decisiones de diseño que pudieran ocasionar errores.
+
+Se indicó explícitamente que no debía modificar archivos, generar pruebas ni reescribir completamente la clase.
+
+### Resultado de la auditoría
+
+Codex propuso nueve hallazgos.
+
+Después de revisarlos individualmente se decidió no aceptar automáticamente todas sus recomendaciones.
+
+Se consideraron relevantes:
+
+- aceptación de valores `NaN` e infinitos en temperaturas;
+- comparación de datetimes con y sin zona horaria;
+- pérdida de la diferencia entre un campo PATCH omitido y un `null` explícito;
+- dependencia de `ReadingService` sobre una interfaz de repositorio más amplia de la necesaria.
+
+También se rechazaron propuestas como:
+
+- establecer un máximo arbitrario para `offset`;
+- agregar validaciones de tipos duplicadas en el servicio;
+- cambiar el orden de algunas consultas solamente por rendimiento;
+- introducir una unidad de trabajo o cambios transaccionales sin evidencia suficiente;
+- agregar nuevas reglas de negocio que SensorHub no define.
+
+### Segunda solicitud a la IA
+
+Se pidió a Codex revisar las pruebas existentes e identificar únicamente casos borde todavía no cubiertos.
+
+La IA analizó especialmente:
+
+- valores nulos;
+- límites exactos;
+- `NaN` e infinito;
+- IDs inválidos;
+- fechas malformadas;
+- datetimes con distinta conciencia de zona horaria;
+- diferencias entre campos PATCH omitidos y enviados como `null`.
+
+A partir de sus propuestas se seleccionaron ocho pruebas nuevas con valor para el proyecto.
+
+### Pruebas seleccionadas
+
+Se agregaron casos para comprobar:
+
+1. rechazo de temperatura `NaN`;
+2. rechazo de temperatura `+Infinity`;
+3. rechazo controlado de un rango con datetime naive y timezone-aware;
+4. rechazo de `value: null` explícito en PATCH;
+5. rechazo de `unit: null` explícito en PATCH;
+6. aceptación de temperatura exactamente `-273.15 °C`;
+7. aceptación de humedad exactamente `0 %`;
+8. aceptación de humedad exactamente `100 %`.
+
+La IA recibió la instrucción de modificar únicamente los archivos de pruebas y no corregir todavía el código de producción.
+
+### Evidencia RED
+
+Se ejecutó:
+
+```bash
+python -m pytest tests/test_reading_service.py tests/test_readings_api.py -q
+```
+
+Resultado:
+
+```text
+5 failed, 31 passed
+```
+
+Los cinco fallos confirmaron defectos reales:
+
+- `NaN` era aceptado como temperatura;
+- `+Infinity` era aceptado como temperatura;
+- mezclar datetime naive y timezone-aware provocaba `TypeError`;
+- PATCH con `value: null` respondía `200`;
+- PATCH con `unit: null` respondía `200`.
+
+Los tres límites físicos exactos ya funcionaban correctamente.
+
+### Correcciones solicitadas a Codex
+
+Después de comprobar los fallos se permitió a Codex modificar únicamente:
+
+- `app/services/reading_service.py`;
+- `app/schemas/reading.py`.
+
+Se pidió realizar únicamente las correcciones mínimas necesarias y no modificar las pruebas.
+
+Codex implementó:
+
+- `math.isfinite()` para rechazar mediciones no finitas;
+- validación previa para impedir comparaciones entre datetimes naive y timezone-aware;
+- un `field_validator` de Pydantic para rechazar `null` explícito en los campos opcionales de `ReadingUpdate`, manteniendo válidos los campos omitidos.
+
+Los cambios fueron revisados manualmente mediante `git diff` antes de aceptar el resultado.
+
+### Evidencia GREEN
+
+Después de revisar las modificaciones se ejecutó:
+
+```bash
+python -m pytest tests/test_reading_service.py tests/test_readings_api.py -q --no-cov
+```
+
+Resultado:
+
+```text
+36 passed
+```
+
+Los cinco fallos detectados previamente quedaron corregidos.
+
+### Refactor ISP
+
+También se aceptó un hallazgo relacionado con Interface Segregation Principle.
+
+`ReadingService` utilizaba únicamente `get_by_id()` del repositorio de sensores, pero dependía del contrato completo `SensorRepository`.
+
+Se pidió a Codex realizar un refactor mínimo.
+
+Se agregó:
+
+```python
+class SensorLookupRepository(Protocol):
+    def get_by_id(self, sensor_id: str) -> Sensor | None:
+        ...
+```
+
+`ReadingService` pasó a depender de este protocolo reducido.
+
+`SensorRepository` y `SQLAlchemySensorRepository` conservaron su comportamiento y la implementación concreta continuó siendo compatible mediante structural typing.
+
+### Validación final
+
+Se ejecutaron los controles del proyecto:
+
+```bash
+python -m ruff check app tests migrations
+```
+
+Resultado: sin errores.
+
+```bash
+python -m mypy app
+```
+
+Resultado: sin errores.
+
+Finalmente:
+
+```bash
+python -m pytest
+```
+
+Resultado:
+
+```text
+69 passed
+```
+
+Cobertura total:
+
+```text
+90.71 %
+```
+
+El proyecto continúa por encima del mínimo requerido de 80 %.
+
+### Decisión
+
+Se conservaron únicamente los cambios respaldados por pruebas reproducibles o por una mejora de diseño claramente justificable.
+
+La IA se utilizó como herramienta de auditoría, generación de casos borde y apoyo para implementar correcciones mínimas, pero cada propuesta fue revisada antes de incorporarse.
+
+El flujo utilizado fue:
+
+```text
+Auditoría con IA
+→ evaluación humana
+→ selección de casos borde
+→ pruebas RED
+→ corrección mínima
+→ pruebas GREEN
+→ validación final
+```
+
+Esta actividad mostró que un code review asistido por IA resulta útil cuando sus sugerencias se tratan como propuestas que deben comprobarse y no como cambios que deban aceptarse automáticamente.

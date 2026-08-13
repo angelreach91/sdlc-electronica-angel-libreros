@@ -273,6 +273,36 @@ def test_update_reading_forwards_partial_change() -> None:
     )
 
 
+def test_update_reading_rejects_explicit_null_value() -> None:
+    service = FakeReadingService()
+
+    with reading_client(service) as client:
+        response = client.patch(
+            "/readings/7",
+            json={
+                "value": None,
+            },
+        )
+
+    assert response.status_code == 422
+    assert service.update_arguments is None
+
+
+def test_update_reading_rejects_explicit_null_unit() -> None:
+    service = FakeReadingService()
+
+    with reading_client(service) as client:
+        response = client.patch(
+            "/readings/7",
+            json={
+                "unit": None,
+            },
+        )
+
+    assert response.status_code == 422
+    assert service.update_arguments is None
+
+
 def test_create_reading_returns_404_for_unknown_sensor() -> None:
     service = FakeReadingService()
     service.create_error = LookupError(
