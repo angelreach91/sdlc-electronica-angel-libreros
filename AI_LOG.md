@@ -3286,31 +3286,54 @@ También se utilizó para:
 Se confirmó que la aplicación cumple con los requisitos del nivel **Estándar esperado**: Docker Compose con PostgreSQL, pipeline de CI funcional, despliegue público en Render, despliegue continuo demostrado y configuración mediante variables de entorno sin secretos reales detectados en el historial.
 
 ## Semana 5
-### — Día 1: Prompting efectivo
+#### LUNES: Actualización — Refinamiento de los ejercicios de prompting
 
-#### Objetivo
+Después de revisar la primera versión de `semana5/prompting.md`, se decidió sustituir los ejemplos iniciales de conversiones por tareas más representativas del trabajo realizado en SensorHub.
 
-Practicar la elaboración de prompts para tareas de programación y comparar cómo cambia la respuesta de la IA al utilizar instrucciones poco específicas frente a prompts estructurados con contexto, tarea, restricciones y formato de entrega.
+Los nuevos ejercicios se centraron en tres operaciones de una API REST:
 
-#### Herramienta
+1. Crear un endpoint `POST` para registrar una lectura.
+2. Crear un endpoint `GET` para consultar lecturas con filtros y paginación.
+3. Crear un endpoint `POST` para registrar un sensor.
 
-GitHub Copilot Chat en Visual Studio Code.
+Para cada tarea se mantuvo la comparación entre un prompt pobre y un prompt estructurado.
 
-#### Uso de IA
+#### Herramienta utilizada
 
-Se utilizaron tres tareas relacionadas con SensorHub:
+`GitHub Copilot Web`
 
-1. Conversión de Celsius a Fahrenheit.
-2. Conversión de Fahrenheit a Celsius.
-3. Conversión de humedad porcentual a una fracción entre `0.0` y `1.0`.
+Se decidió utilizar Copilot desde la versión web en lugar del chat integrado en VS Code para evitar que el prompt pobre se beneficiara automáticamente del contexto del repositorio. De esta manera, la comparación permitió observar con mayor claridad qué decisiones debía inventar la IA cuando no recibía información suficiente sobre SensorHub.
 
-Para cada tarea se ejecutó primero un prompt poco específico y posteriormente un prompt estructurado. Los resultados generados por Copilot se conservaron en `semana5/prompting.md` para compararlos.
+#### Resultados observados
 
-#### Decisión
+Los prompts pobres generaron soluciones que podían ser funcionales de forma aislada, pero realizaron numerosas suposiciones sobre el proyecto. Entre ellas aparecieron frameworks, modelos, campos, bases de datos, reglas de negocio y estrategias de persistencia que no correspondían con la arquitectura actual de SensorHub.
 
-Se observó que un prompt poco específico puede generar código correcto, pero deja varias decisiones a criterio de la IA. Los prompts estructurados permitieron especificar con mayor precisión el comportamiento esperado y produjeron resultados más predecibles y alineados con los requisitos planteados.
+En algunos casos Copilot llegó a mezclar en un mismo endpoint responsabilidades de API, validación y acceso directo a la base de datos.
 
-No se incorporó automáticamente el código generado al proyecto; los resultados se utilizaron únicamente para analizar y documentar el efecto de la calidad del prompt.
+Los prompts estructurados produjeron resultados mucho más cercanos al proyecto al especificar:
+
+- el contexto de SensorHub;
+- FastAPI y Python 3.12;
+- la arquitectura en capas;
+- los servicios que debían utilizarse;
+- los modelos de entrada y salida;
+- los códigos HTTP esperados;
+- las restricciones arquitectónicas;
+- el formato exacto de entrega.
+
+Aun así, las respuestas estructuradas presentaron algunos errores, como tipos incorrectos, uso innecesario de `async` y `await`, dependencias mal inyectadas y diferencias con las firmas reales de los servicios.
+
+#### Decisión tomada
+
+Se conservaron los nuevos ejercicios porque permiten demostrar de forma más clara el efecto del contexto y las restricciones en tareas reales de desarrollo.
+
+No se incorporó automáticamente ninguno de los códigos generados al proyecto. Los resultados se utilizaron únicamente como evidencia para comparar el comportamiento de la IA ante instrucciones ambiguas y estructuradas.
+
+#### Justificación
+
+La actualización muestra que un prompt estructurado reduce considerablemente la cantidad de decisiones que la IA debe asumir, pero no garantiza una respuesta completamente correcta.
+
+Incluso cuando el resultado parece alineado con la arquitectura esperada, sigue siendo necesario revisar tipos, dependencias, contratos y responsabilidades antes de aceptar código generado por IA.
 
 ### — Día 2: Aider y trazabilidad con Git
 
