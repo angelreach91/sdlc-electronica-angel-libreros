@@ -3284,3 +3284,30 @@ También se utilizó para:
 #### Resultado
 
 Se confirmó que la aplicación cumple con los requisitos del nivel **Estándar esperado**: Docker Compose con PostgreSQL, pipeline de CI funcional, despliegue público en Render, despliegue continuo demostrado y configuración mediante variables de entorno sin secretos reales detectados en el historial.
+
+## Semana 5
+### — Día 1: Prompting efectivo
+
+#### Objetivo
+
+Practicar la elaboración de prompts para tareas de programación y comparar cómo cambia la respuesta de la IA al utilizar instrucciones poco específicas frente a prompts estructurados con contexto, tarea, restricciones y formato de entrega.
+
+#### Herramienta
+
+GitHub Copilot Chat en Visual Studio Code.
+
+#### Uso de IA
+
+Se utilizaron tres tareas relacionadas con SensorHub:
+
+1. Conversión de Celsius a Fahrenheit.
+2. Conversión de Fahrenheit a Celsius.
+3. Conversión de humedad porcentual a una fracción entre `0.0` y `1.0`.
+
+Para cada tarea se ejecutó primero un prompt poco específico y posteriormente un prompt estructurado. Los resultados generados por Copilot se conservaron en `semana5/prompting.md` para compararlos.
+
+#### Decisión
+
+Se observó que un prompt poco específico puede generar código correcto, pero deja varias decisiones a criterio de la IA. Los prompts estructurados permitieron especificar con mayor precisión el comportamiento esperado y produjeron resultados más predecibles y alineados con los requisitos planteados.
+
+No se incorporó automáticamente el código generado al proyecto; los resultados se utilizaron únicamente para analizar y documentar el efecto de la calidad del prompt.
