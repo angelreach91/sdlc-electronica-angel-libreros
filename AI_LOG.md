@@ -3311,3 +3311,107 @@ Para cada tarea se ejecutó primero un prompt poco específico y posteriormente 
 Se observó que un prompt poco específico puede generar código correcto, pero deja varias decisiones a criterio de la IA. Los prompts estructurados permitieron especificar con mayor precisión el comportamiento esperado y produjeron resultados más predecibles y alineados con los requisitos planteados.
 
 No se incorporó automáticamente el código generado al proyecto; los resultados se utilizaron únicamente para analizar y documentar el efecto de la calidad del prompt.
+
+### — Día 2: Aider y trazabilidad con Git
+
+#### Objetivo
+
+Utilizar Aider para realizar un cambio asistido por inteligencia artificial directamente sobre el repositorio y comprobar cómo la herramienta mantiene trazabilidad de sus modificaciones mediante Git.
+
+#### Herramienta utilizada
+
+`Aider 0.86.2` conectado a OpenRouter mediante un modelo gratuito.
+
+#### Configuración
+
+Aider se instaló mediante:
+
+```bash
+python -m pip install aider-install
+aider-install
+```
+
+Después se verificó la instalación con:
+
+```bash
+aider --version
+```
+
+La versión utilizada fue `0.86.2`.
+
+Para utilizar un modelo se configuró OpenRouter mediante la variable de entorno `OPENROUTER_API_KEY`. El intento inicial de autenticación automática desde WSL no terminó correctamente debido al callback mediante `localhost`, por lo que se realizó la configuración manual de la clave.
+
+#### Uso de Aider
+
+Se inició Aider sobre el archivo:
+
+```text
+semana5/conversions.py
+```
+
+utilizando el modelo gratuito disponible mediante OpenRouter.
+
+Se solicitó crear una función llamada `celsius_to_fahrenheit(celsius: float) -> float` que:
+
+- convierta grados Celsius a Fahrenheit;
+- utilice `type hints`;
+- incluya una `docstring`;
+- redondee el resultado a dos decimales;
+- no agregue dependencias externas;
+- no modifique otros archivos.
+
+Aider generó la siguiente implementación:
+
+```python
+def celsius_to_fahrenheit(celsius: float) -> float:
+    """Convierte grados Celsius a Fahrenheit y redondea a 2 decimales."""
+    return round(celsius * 9 / 5 + 32, 2)
+```
+
+#### Trazabilidad en Git
+
+Aider registró automáticamente sus cambios mediante los siguientes commits:
+
+```text
+7ac8e8b feat: add conversions module for week 5
+2fbd5fc feat: add celsius_to_fahrenheit function
+```
+
+Esto permitió distinguir en el historial de Git los cambios realizados por la herramienta.
+
+También se agregó `.aider*` al archivo `.gitignore` para evitar versionar archivos auxiliares generados por Aider.
+
+#### Comparación con GitHub Copilot
+
+Aider supera a Copilot Chat en la integración directa con el repositorio, ya que puede modificar archivos y registrar automáticamente los cambios mediante commits. Esto facilita revisar qué modificaciones fueron realizadas por la IA y proporciona mayor trazabilidad.
+
+Sin embargo, Aider requiere una configuración inicial más compleja. Fue necesario instalar la herramienta, configurar un proveedor externo de modelos y utilizar una API key. Además, la autenticación automática con OpenRouter presentó problemas al trabajar desde WSL.
+
+Copilot Chat resulta más sencillo para consultas rápidas y generación de propuestas, mientras que Aider proporciona una integración más directa con los archivos y con Git.
+
+#### Validación
+
+El archivo generado por Aider se verificó mediante:
+
+```bash
+ruff check semana5/conversions.py
+mypy semana5/conversions.py
+python -m pytest
+```
+
+`Ruff` y `Mypy` no detectaron problemas en `semana5/conversions.py`.
+
+La ejecución completa de pruebas produjo:
+
+```text
+61 passed
+Total coverage: 90.38%
+```
+
+superando el mínimo de cobertura del 80 % configurado en el proyecto.
+
+#### Decisión
+
+Se decidió conservar el cambio generado por Aider porque la función es sencilla, cumple con las restricciones solicitadas y pasó las comprobaciones de calidad realizadas.
+
+La principal conclusión del ejercicio es que Aider aporta mayor trazabilidad que una conversación convencional con Copilot, pero requiere una configuración inicial más compleja y depende de un proveedor externo de modelos.
