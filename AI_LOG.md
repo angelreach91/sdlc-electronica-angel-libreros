@@ -3286,7 +3286,8 @@ También se utilizó para:
 Se confirmó que la aplicación cumple con los requisitos del nivel **Estándar esperado**: Docker Compose con PostgreSQL, pipeline de CI funcional, despliegue público en Render, despliegue continuo demostrado y configuración mediante variables de entorno sin secretos reales detectados en el historial.
 
 ## Semana 5
-#### LUNES: Actualización — Refinamiento de los ejercicios de prompting
+
+### Lunes: Actualización — Refinamiento de los ejercicios de prompting
 
 Después de revisar la primera versión de `semana5/prompting.md`, se decidió sustituir los ejemplos iniciales de conversiones por tareas más representativas del trabajo realizado en SensorHub.
 
@@ -3335,7 +3336,7 @@ La actualización muestra que un prompt estructurado reduce considerablemente la
 
 Incluso cuando el resultado parece alineado con la arquitectura esperada, sigue siendo necesario revisar tipos, dependencias, contratos y responsabilidades antes de aceptar código generado por IA.
 
-### — Día 2: Aider y trazabilidad con Git
+### — Martes: Aider y trazabilidad con Git
 
 #### Objetivo
 
@@ -3439,13 +3440,13 @@ Se decidió conservar el cambio generado por Aider porque la función es sencill
 
 La principal conclusión del ejercicio es que Aider aporta mayor trazabilidad que una conversación convencional con Copilot, pero requiere una configuración inicial más compleja y depende de un proveedor externo de modelos.
 
-## Miércoles — Code review asistido por IA y pruebas de casos borde
+### Miércoles — Code review asistido por IA y pruebas de casos borde
 
-### Objetivo
+#### Objetivo
 
 Utilizar IA como apoyo durante un code review real de `ReadingService`, evaluando sus sugerencias con criterio propio antes de modificar el código. La revisión se enfocó en principios SOLID, casos borde, seguridad, rendimiento y validaciones que pudieran permitir comportamientos incorrectos.
 
-### Herramienta
+#### Herramienta
 
 Codex integrado en VS Code.
 
@@ -3457,7 +3458,7 @@ sandbox_mode = "read-only"
 
 Esto permitió realizar la auditoría sin que la IA modificara automáticamente el repositorio.
 
-### Primera solicitud a la IA
+#### Primera solicitud a la IA
 
 Se pidió a Codex revisar `app/services/reading_service.py` como un ingeniero senior durante un code review y buscar:
 
@@ -3470,7 +3471,7 @@ Se pidió a Codex revisar `app/services/reading_service.py` como un ingeniero se
 
 Se indicó explícitamente que no debía modificar archivos, generar pruebas ni reescribir completamente la clase.
 
-### Resultado de la auditoría
+#### Resultado de la auditoría
 
 Codex propuso nueve hallazgos.
 
@@ -3491,7 +3492,7 @@ También se rechazaron propuestas como:
 - introducir una unidad de trabajo o cambios transaccionales sin evidencia suficiente;
 - agregar nuevas reglas de negocio que SensorHub no define.
 
-### Segunda solicitud a la IA
+#### Segunda solicitud a la IA
 
 Se pidió a Codex revisar las pruebas existentes e identificar únicamente casos borde todavía no cubiertos.
 
@@ -3507,7 +3508,7 @@ La IA analizó especialmente:
 
 A partir de sus propuestas se seleccionaron ocho pruebas nuevas con valor para el proyecto.
 
-### Pruebas seleccionadas
+#### Pruebas seleccionadas
 
 Se agregaron casos para comprobar:
 
@@ -3522,7 +3523,7 @@ Se agregaron casos para comprobar:
 
 La IA recibió la instrucción de modificar únicamente los archivos de pruebas y no corregir todavía el código de producción.
 
-### Evidencia RED
+#### Evidencia RED
 
 Se ejecutó:
 
@@ -3546,7 +3547,7 @@ Los cinco fallos confirmaron defectos reales:
 
 Los tres límites físicos exactos ya funcionaban correctamente.
 
-### Correcciones solicitadas a Codex
+#### Correcciones solicitadas a Codex
 
 Después de comprobar los fallos se permitió a Codex modificar únicamente:
 
@@ -3563,7 +3564,7 @@ Codex implementó:
 
 Los cambios fueron revisados manualmente mediante `git diff` antes de aceptar el resultado.
 
-### Evidencia GREEN
+#### Evidencia GREEN
 
 Después de revisar las modificaciones se ejecutó:
 
@@ -3579,7 +3580,7 @@ Resultado:
 
 Los cinco fallos detectados previamente quedaron corregidos.
 
-### Refactor ISP
+#### Refactor ISP
 
 También se aceptó un hallazgo relacionado con Interface Segregation Principle.
 
@@ -3599,7 +3600,7 @@ class SensorLookupRepository(Protocol):
 
 `SensorRepository` y `SQLAlchemySensorRepository` conservaron su comportamiento y la implementación concreta continuó siendo compatible mediante structural typing.
 
-### Validación final
+#### Validación final
 
 Se ejecutaron los controles del proyecto:
 
@@ -3635,7 +3636,7 @@ Cobertura total:
 
 El proyecto continúa por encima del mínimo requerido de 80 %.
 
-### Decisión
+#### Decisión
 
 Se conservaron únicamente los cambios respaldados por pruebas reproducibles o por una mejora de diseño claramente justificable.
 
@@ -3654,3 +3655,207 @@ Auditoría con IA
 ```
 
 Esta actividad mostró que un code review asistido por IA resulta útil cuando sus sugerencias se tratan como propuestas que deben comprobarse y no como cambios que deban aceptarse automáticamente.
+
+### Jueves — Arquitectura, Fowler y ADR asistido por IA
+
+#### Objetivo
+
+Analizar si SensorHub debería mantenerse como una aplicación monolítica modular o dividirse actualmente en microservicios, utilizando como base las lecturas de Martin Fowler y una propuesta inicial generada con Codex.
+
+El objetivo no fue implementar una nueva arquitectura, sino documentar una decisión técnica defendible de acuerdo con el estado real del proyecto.
+
+#### Fuentes revisadas
+
+Se estudiaron:
+
+- Martin Fowler y James Lewis, *Microservices*.
+- Martin Fowler, *Monolith First*.
+
+De estas lecturas se identificaron ideas relevantes como:
+
+- los microservicios permiten despliegue independiente, pero introducen comunicación remota y mayor complejidad operativa;
+- los sistemas distribuidos requieren considerar fallos parciales, observabilidad, automatización y consistencia entre servicios;
+- Fowler utiliza el concepto de *microservice premium* para describir el costo adicional de una arquitectura distribuida;
+- *Monolith First* propone evitar una separación prematura cuando todavía no están claros los límites del dominio;
+- comenzar con un monolito no significa construir una aplicación desorganizada;
+- un monolito modular puede facilitar una futura separación si aparecen necesidades reales;
+- YAGNI ayuda a evitar introducir complejidad para requisitos que todavía no existen.
+
+Las notas de estudio se utilizaron únicamente como apoyo para la actividad y no se incorporaron como entregable versionado.
+
+#### Situación evaluada en SensorHub
+
+Antes de solicitar el ADR a la IA se consideró la arquitectura existente de SensorHub.
+
+Actualmente la aplicación:
+
+- se despliega como una sola unidad;
+- separa internamente `routers`, `services`, `repositories`, `schemas` y `models`;
+- utiliza inyección de dependencias;
+- utiliza contratos mediante `Protocol`;
+- permite probar las diferentes capas de forma independiente;
+- no presenta actualmente una necesidad demostrada de desplegar o escalar sensores y lecturas por separado.
+
+También se revisó `ADR-0003`, que ya documenta la arquitectura en capas.
+
+Por esta razón se decidió no duplicar ese ADR y documentar una decisión diferente: por qué SensorHub continúa siendo una sola unidad de despliegue.
+
+#### Solicitud a Codex
+
+Se pidió a Codex revisar la organización actual del repositorio y crear únicamente:
+
+```text
+docs/adr/0004-monolito-modular-frente-a-microservicios.md
+```
+
+El borrador debía documentar la decisión de mantener SensorHub como monolito modular y considerar microservicios solamente si en el futuro aparecían necesidades concretas.
+
+Se indicó que no debía:
+
+- modificar código;
+- modificar ADR anteriores;
+- modificar `AI_LOG.md`;
+- inventar tráfico, usuarios, métricas o problemas de escalabilidad;
+- presentar los microservicios como una mala arquitectura;
+- proponer una división inmediata;
+- hacer commit.
+
+#### Borrador generado
+
+Codex propuso dos alternativas principales:
+
+1. dividir SensorHub actualmente en microservicios;
+2. conservar una aplicación única pero sin límites internos explícitos.
+
+El borrador recomendó mantener un monolito modular y conservar la separación actual entre capas.
+
+También incluyó consecuencias positivas y negativas, así como condiciones que podrían justificar revisar la decisión en el futuro.
+
+#### Revisión humana
+
+El borrador no fue aceptado automáticamente.
+
+Durante la revisión se realizaron varias correcciones.
+
+#### Estado del ADR
+
+Codex dejó inicialmente:
+
+```text
+Estado: Propuesto
+```
+
+Después de revisar y aceptar la decisión se cambió a:
+
+```text
+Estado: Aceptado
+```
+
+#### Consistencia entre sensores y lecturas
+
+El borrador afirmaba que:
+
+```text
+Las operaciones que abarcan sensores y lecturas pueden mantener la consistencia sin introducir coordinación distribuida.
+```
+
+Se consideró que esta frase podía interpretarse como una garantía de atomicidad que el ADR no debía afirmar.
+
+Se reemplazó por:
+
+```text
+Las operaciones entre sensores y lecturas permanecen dentro de la misma aplicación y no requieren coordinación distribuida entre servicios.
+```
+
+##### Referencias
+
+Las referencias se ajustaron para utilizar únicamente las fuentes realmente estudiadas:
+
+- Martin Fowler y James Lewis, *Microservices*.
+- Martin Fowler, *Monolith First*.
+
+##### Resultado
+
+También se eliminó lenguaje que seguía describiendo el documento como un borrador y se cambió:
+
+```text
+Se propone mantener SensorHub...
+```
+
+por una redacción coherente con una decisión ya aceptada:
+
+```text
+Se mantiene SensorHub como un monolito modular...
+```
+
+#### Decisión arquitectónica
+
+La decisión final fue mantener SensorHub como un monolito modular.
+
+Esto significa conservar:
+
+```text
+Router
+↓
+Service
+↓
+Repository
+↓
+Model
+↓
+Base de datos
+```
+
+junto con:
+
+- schemas separados;
+- inyección de dependencias;
+- contratos mediante `Protocol`;
+- pruebas independientes por capa.
+
+No se considera necesario introducir actualmente fronteras de red entre sensores y lecturas.
+
+#### Cuándo reconsiderar microservicios
+
+El ADR establece que la decisión puede revisarse si aparece evidencia de situaciones como:
+
+- necesidad real de escalar componentes de forma independiente;
+- necesidad de desplegarlos de forma independiente;
+- límites de dominio suficientemente maduros y estables;
+- equipos diferentes responsables de distintas capacidades;
+- necesidades tecnológicas claramente diferentes entre componentes.
+
+La presencia de alguna de estas condiciones no implicaría adoptar microservicios automáticamente, sino iniciar una nueva evaluación arquitectónica.
+
+#### Decisión sobre las sugerencias de IA
+
+Se aceptó la estructura general propuesta por Codex porque coincidía con el estado actual de SensorHub y con los argumentos estudiados en Fowler.
+
+Sin embargo, se corrigieron afirmaciones que podían ser demasiado fuertes, se ajustaron las fuentes y se eliminó lenguaje propio de un borrador.
+
+La decisión final no fue:
+
+```text
+La IA recomienda monolito → se implementa
+```
+
+sino:
+
+```text
+Lectura técnica
+→ análisis del proyecto
+→ borrador con IA
+→ revisión humana
+→ correcciones
+→ ADR aceptado
+```
+
+#### Resultado
+
+Se creó:
+
+```text
+docs/adr/0004-monolito-modular-frente-a-microservicios.md
+```
+
+El ADR documenta por qué SensorHub permanece actualmente como un monolito modular y bajo qué condiciones tendría sentido volver a evaluar una arquitectura de microservicios.
