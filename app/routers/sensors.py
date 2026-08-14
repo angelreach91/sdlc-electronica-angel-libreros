@@ -138,6 +138,7 @@ def update_sensor(
             sensor_id,
             name=sensor_data.name,
             is_active=sensor_data.is_active,
+            threshold=sensor_data.threshold,
         )
     except ValueError as error:
         raise _bad_request(error) from error

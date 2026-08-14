@@ -20,10 +20,17 @@ class FakeSensorService:
         self.list_arguments: tuple[int, int] | None = None
         self.get_arguments: str | None = None
         self.update_arguments: (
-            tuple[str, str | None, bool | None] | None
+            tuple[
+                str,
+                str | None,
+                bool | None,
+                float | None,
+            ]
+            | None
         ) = None
 
         self.create_error: ValueError | None = None
+        self.update_result: Sensor | None = None
         self.get_result: Sensor | None = Sensor(
             id="TEMP-01",
             name="Sensor de temperatura",
@@ -92,13 +99,15 @@ class FakeSensorService:
         *,
         name: str | None = None,
         is_active: bool | None = None,
+        threshold: float | None = None,
     ) -> Sensor | None:
         self.update_arguments = (
             sensor_id,
             name,
             is_active,
+            threshold,
         )
-        return None
+        return self.update_result
 
     def deactivate_sensor(self, sensor_id: str) -> bool:
         return False
@@ -143,6 +152,7 @@ def test_create_sensor_returns_created_sensor() -> None:
         "sensor_type": "temperature",
         "unit": "C",
         "is_active": True,
+        "threshold": None,
     }
 
     assert service.create_arguments == (
@@ -274,3 +284,39 @@ def test_update_sensor_rejects_type_and_unit_with_422() -> None:
 
     assert response.status_code == 422
     assert service.update_arguments is None
+
+
+def test_update_sensor_forwards_and_returns_threshold() -> None:
+    service = FakeSensorService()
+    service.update_result = Sensor(
+        id="TEMP-01",
+        name="Sensor de temperatura",
+        sensor_type="temperature",
+        unit="C",
+        is_active=True,
+        threshold=30.0,
+    )
+
+    with sensor_client(service) as client:
+        response = client.patch(
+            "/sensors/TEMP-01",
+            json={
+                "threshold": 30.0,
+            },
+        )
+
+    assert response.status_code == 200
+    assert service.update_arguments == (
+        "TEMP-01",
+        None,
+        None,
+        30.0,
+    )
+    assert response.json() == {
+        "id": "TEMP-01",
+        "name": "Sensor de temperatura",
+        "sensor_type": "temperature",
+        "unit": "C",
+        "is_active": True,
+        "threshold": 30.0,
+    }

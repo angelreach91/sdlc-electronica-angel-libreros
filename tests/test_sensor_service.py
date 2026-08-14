@@ -85,6 +85,16 @@ def test_create_sensor_stores_normalized_data(
     assert repository.sensors == {"TEMP-01": sensor}
 
 
+def test_create_sensor_has_no_threshold_by_default(
+    context: TestContext,
+) -> None:
+    service, _ = context
+
+    sensor = create_temperature_sensor(service)
+
+    assert sensor.threshold is None
+
+
 def test_create_sensor_rejects_duplicate_id(
     context: TestContext,
 ) -> None:
@@ -191,6 +201,26 @@ def test_update_sensor_changes_fields_and_persists(
     assert sensor.sensor_type == "temperature"
     assert sensor.unit == "C"
     assert sensor.is_active is False
+    assert repository.update_calls == [sensor]
+
+
+def test_update_sensor_changes_only_threshold_and_persists(
+    context: TestContext,
+) -> None:
+    service, repository = context
+    sensor = create_temperature_sensor(service)
+    original_name = sensor.name
+    original_is_active = sensor.is_active
+
+    updated = service.update_sensor(
+        sensor.id,
+        threshold=30.5,
+    )
+
+    assert updated is sensor
+    assert sensor.threshold == 30.5
+    assert sensor.name == original_name
+    assert sensor.is_active is original_is_active
     assert repository.update_calls == [sensor]
 
 

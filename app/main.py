@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 
+from app.routers.alerts import router as alerts_router
 from app.routers.readings import router as readings_router
 from app.routers.sensors import router as sensors_router
 
@@ -10,6 +11,7 @@ app = FastAPI(
 
 app.include_router(sensors_router)
 app.include_router(readings_router)
+app.include_router(alerts_router)
 
 
 @app.get(

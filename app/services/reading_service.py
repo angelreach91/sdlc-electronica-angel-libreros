@@ -1,6 +1,7 @@
 from collections.abc import Callable
 from datetime import datetime, timezone
 from math import isfinite
+from typing import Protocol
 
 from app.models.reading import Reading
 from app.models.sensor import Sensor
@@ -19,6 +20,14 @@ def utc_now() -> datetime:
     return datetime.now(timezone.utc)
 
 
+class AnomalyEvaluator(Protocol):
+    """Contrato mínimo para evaluar anomalías en una lectura."""
+
+    def evaluate(self, reading: Reading) -> object | None:
+        """Evalúa una lectura persistida."""
+        ...
+
+
 class ReadingService:
     """Gestiona las reglas de negocio relacionadas con las lecturas."""
 
@@ -27,10 +36,12 @@ class ReadingService:
         reading_repository: ReadingRepository,
         sensor_repository: SensorLookupRepository,
         clock: Callable[[], datetime] = utc_now,
+        anomaly_evaluator: AnomalyEvaluator | None = None,
     ) -> None:
         self._reading_repository = reading_repository
         self._sensor_repository = sensor_repository
         self._clock = clock
+        self._anomaly_evaluator = anomaly_evaluator
 
     def create_reading(
         self,
@@ -60,8 +71,12 @@ class ReadingService:
             unit=unit.value,
             received_at=self._clock(),
         )
+        saved_reading = self._reading_repository.add(reading)
 
-        return self._reading_repository.add(reading)
+        if self._anomaly_evaluator is not None:
+            self._anomaly_evaluator.evaluate(saved_reading)
+
+        return saved_reading
 
     def list_by_sensor(
         self,

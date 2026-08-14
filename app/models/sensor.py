@@ -1,4 +1,4 @@
-from sqlalchemy import Boolean, String
+from sqlalchemy import Boolean, Float, String
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db import Base
@@ -29,6 +29,10 @@ class Sensor(Base):
         Boolean,
         nullable=False,
         default=True,
+    )
+    threshold: Mapped[float | None] = mapped_column(
+        Float,
+        nullable=True,
     )
 
     def __repr__(self) -> str:

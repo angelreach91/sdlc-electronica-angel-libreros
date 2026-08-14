@@ -23,6 +23,7 @@ class SensorUpdate(BaseModel):
         max_length=100,
     )
     is_active: bool | None = None
+    threshold: float | None = None
 
 
 class SensorResponse(BaseModel):
@@ -35,3 +36,4 @@ class SensorResponse(BaseModel):
     sensor_type: SensorType
     unit: SensorUnit
     is_active: bool
+    threshold: float | None

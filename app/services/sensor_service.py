@@ -39,6 +39,7 @@ class SensorService:
             sensor_type=sensor_type.value,
             unit=unit.value,
             is_active=True,
+            threshold=None,
         )
 
         return self._repository.add(sensor)
@@ -70,12 +71,13 @@ class SensorService:
         *,
         name: str | None = None,
         is_active: bool | None = None,
+        threshold: float | None = None,
     ) -> Sensor | None:
-        """Actualiza el nombre o estado de un sensor existente."""
+        """Actualiza los campos proporcionados de un sensor existente."""
 
         normalized_sensor_id = self._normalize_sensor_id(sensor_id)
 
-        if name is None and is_active is None:
+        if name is None and is_active is None and threshold is None:
             raise ValueError(
                 "debe proporcionar al menos un valor para actualizar"
             )
@@ -90,6 +92,9 @@ class SensorService:
 
         if is_active is not None:
             sensor.is_active = is_active
+
+        if threshold is not None:
+            sensor.threshold = threshold
 
         return self._repository.update(sensor)
 

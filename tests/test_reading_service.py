@@ -12,12 +12,16 @@ RANGE_START = datetime(2026, 7, 28, tzinfo=timezone.utc)
 RANGE_END = datetime(2026, 7, 29, tzinfo=timezone.utc)
 
 
+CallEvent = tuple[str, Reading]
+
+
 class FakeReadingRepository:
     """Repositorio controlado utilizado para probar ReadingService."""
 
-    def __init__(self) -> None:
+    def __init__(self, events: list[CallEvent] | None = None) -> None:
         self.readings: list[Reading] = []
         self._next_id = 1
+        self.events = events
 
         self.add_calls: list[Reading] = []
         self.list_arguments: (
@@ -41,6 +45,9 @@ class FakeReadingRepository:
 
         self.readings.append(reading)
         self.add_calls.append(reading)
+
+        if self.events is not None:
+            self.events.append(("add", reading))
 
         return reading
 
@@ -82,6 +89,18 @@ class FakeReadingRepository:
     def delete(self, reading: Reading) -> None:
         self.delete_calls.append(reading)
         self.readings.remove(reading)
+
+
+class FakeAnomalyEvaluator:
+    """Evaluador controlado que registra cada lectura recibida."""
+
+    def __init__(self, events: list[CallEvent]) -> None:
+        self.events = events
+        self.evaluated_readings: list[Reading] = []
+
+    def evaluate(self, reading: Reading) -> None:
+        self.evaluated_readings.append(reading)
+        self.events.append(("evaluate", reading))
 
 
 class FakeSensorRepository:
@@ -211,6 +230,44 @@ def test_create_reading_stores_valid_measurement(
 
     assert repository.add_calls == [reading]
     assert sensor_repository.get_arguments[-1] == sensor_id
+
+
+def test_create_reading_evaluates_saved_reading_after_persisting(
+    context: TestContext,
+) -> None:
+    _, _, sensor_repository = context
+    events: list[CallEvent] = []
+    reading_repository = FakeReadingRepository(events)
+    anomaly_evaluator = FakeAnomalyEvaluator(events)
+    service = ReadingService(
+        reading_repository=reading_repository,
+        sensor_repository=sensor_repository,
+        clock=fixed_clock,
+        anomaly_evaluator=anomaly_evaluator,
+    )
+
+    result = service.create_reading(
+        sensor_id=" TEMP-01 ",
+        value=24.5,
+        unit=SensorUnit.CELSIUS,
+    )
+
+    assert result.sensor_id == "TEMP-01"
+    assert result.value == 24.5
+    assert result.unit == "C"
+    assert result.received_at == FIXED_TIME
+    assert sensor_repository.get_arguments[-1] == "TEMP-01"
+    assert reading_repository.add_calls == [result]
+    assert anomaly_evaluator.evaluated_readings == [result]
+    assert (
+        anomaly_evaluator.evaluated_readings[0]
+        is reading_repository.add_calls[0]
+    )
+    assert events == [
+        ("add", result),
+        ("evaluate", result),
+    ]
+    assert result is reading_repository.add_calls[0]
 
 
 @pytest.mark.parametrize(

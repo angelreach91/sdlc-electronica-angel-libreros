@@ -4,7 +4,7 @@ from alembic import context
 from sqlalchemy import engine_from_config, pool
 
 from app.db import Base, get_database_url
-from app.models import Reading, Sensor
+from app.models import Alert, Reading, Sensor
 
 config = context.config
 
@@ -12,6 +12,7 @@ if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
 _ = (
+    Alert,
     Reading,
     Sensor,
 )
