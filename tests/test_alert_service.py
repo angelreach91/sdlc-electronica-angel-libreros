@@ -1,8 +1,7 @@
 from datetime import datetime
 
-from app.services.alert_service import AlertService
-
 from app.models.alert import Alert
+from app.services.alert_service import AlertService
 
 
 class FakeAlertRepository:

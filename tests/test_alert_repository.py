@@ -1,7 +1,6 @@
 from datetime import datetime
 from pathlib import Path
 
-from app.repositories.alert_repository import SQLAlchemyAlertRepository
 from sqlalchemy import create_engine
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session
@@ -10,6 +9,7 @@ from app.db import Base
 from app.models.alert import Alert
 from app.models.reading import Reading
 from app.models.sensor import Sensor
+from app.repositories.alert_repository import SQLAlchemyAlertRepository
 
 
 def create_test_engine(database_path: Path) -> Engine:

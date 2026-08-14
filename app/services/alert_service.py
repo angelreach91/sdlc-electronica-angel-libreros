@@ -1,11 +1,20 @@
+from typing import Protocol
+
 from app.models.alert import Alert
-from app.repositories.alert_repository import AlertRepository
+
+
+class AlertQueryRepository(Protocol):
+    """Define las operaciones requeridas para consultar alertas."""
+
+    def list_by_sensor(self, sensor_id: str) -> list[Alert]:
+        """Consulta las alertas de un sensor."""
+        ...
 
 
 class AlertService:
     """Consulta las alertas generadas para los sensores."""
 
-    def __init__(self, repository: AlertRepository) -> None:
+    def __init__(self, repository: AlertQueryRepository) -> None:
         self._repository = repository
 
     def list_by_sensor(self, sensor_id: str) -> list[Alert]:
