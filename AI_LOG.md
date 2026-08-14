@@ -3859,3 +3859,387 @@ docs/adr/0004-monolito-modular-frente-a-microservicios.md
 ```
 
 El ADR documenta por qué SensorHub permanece actualmente como un monolito modular y bajo qué condiciones tendría sentido volver a evaluar una arquitectura de microservicios.
+
+### Viernes — Feature de detección y notificación de anomalías
+
+#### Objetivo
+
+Implementar la feature integradora de la semana mediante TDD estricto.
+
+La funcionalidad debía permitir:
+
+- configurar un umbral por sensor;
+- evaluar cada lectura después de almacenarla;
+- generar una alerta únicamente cuando el valor de la lectura supere el umbral;
+- persistir la alerta;
+- consultarla mediante la API;
+- utilizar una estrategia de notificación intercambiable mediante un contrato.
+
+La regla de negocio definida fue:
+
+```text
+value > threshold → genera alerta
+value <= threshold → no genera alerta
+```
+
+#### Herramienta utilizada
+
+`Codex`
+
+Codex se utilizó principalmente para proponer pruebas y realizar implementaciones pequeñas entre las fases RED y GREEN.
+
+Las modificaciones generadas por IA no se aceptaron como un bloque completo. Cada etapa se revisó antes de continuar con la siguiente.
+
+#### Estrategia utilizada
+
+Se decidió dividir la feature en varias iteraciones para conservar evidencia clara del proceso TDD:
+
+```text
+RED
+→ revisar el fallo
+→ GREEN mínimo
+→ volver a ejecutar pruebas
+→ siguiente RED
+```
+
+No se pidió a Codex implementar toda la funcionalidad de una sola vez.
+
+---
+
+#### RED 1 — Regla de detección de anomalías
+
+Se pidió a Codex crear únicamente:
+
+```text
+tests/test_anomaly_service.py
+```
+
+Las pruebas definieron los siguientes comportamientos:
+
+- un sensor sin umbral no genera alerta;
+- una lectura inferior al umbral no genera alerta;
+- una lectura igual al umbral no genera alerta;
+- una lectura superior al umbral genera una alerta;
+- la alerta conserva `sensor_id`, `reading_id`, `value`, `threshold` y `created_at`;
+- la alerta creada se envía a una estrategia de notificación inyectada.
+
+El primer RED fue:
+
+```text
+ModuleNotFoundError: No module named 'app.models.alert'
+```
+
+#### GREEN 1
+
+Codex creó únicamente:
+
+```text
+app/models/alert.py
+app/services/anomaly_service.py
+```
+
+Se implementó `AnomalyService` utilizando contratos pequeños mediante `Protocol` para:
+
+- consultar el sensor y su umbral;
+- persistir la alerta;
+- notificarla;
+- obtener la fecha mediante un reloj inyectado.
+
+Después de revisar el código se confirmó que la condición utilizada era:
+
+```python
+if reading.value <= threshold:
+    return None
+```
+
+por lo que solamente un valor estrictamente superior genera una alerta.
+
+Resultado:
+
+```text
+6 passed
+```
+
+---
+
+#### RED 2 — Umbral configurable e integración con ReadingService
+
+La siguiente etapa definió mediante pruebas que:
+
+- un sensor nuevo inicia con `threshold=None`;
+- `SensorService.update_sensor()` permite configurar únicamente el umbral;
+- actualizar el umbral no modifica el nombre ni el estado del sensor;
+- `ReadingService` debe persistir primero la lectura;
+- posteriormente debe entregar exactamente esa lectura almacenada al evaluador de anomalías.
+
+El RED obtenido fue:
+
+```text
+3 failed, 41 passed
+```
+
+Los fallos correspondieron exactamente a:
+
+- ausencia de `Sensor.threshold`;
+- `SensorService.update_sensor()` sin parámetro `threshold`;
+- `ReadingService` sin dependencia `anomaly_evaluator`.
+
+#### GREEN 2
+
+Codex modificó únicamente:
+
+```text
+app/models/sensor.py
+app/services/sensor_service.py
+app/services/reading_service.py
+```
+
+Se agregó `threshold` como columna `Float` nullable y se incorporó la dependencia opcional `AnomalyEvaluator`.
+
+La secuencia final en la creación de lecturas quedó conceptualmente como:
+
+```text
+validar lectura
+→ guardar lectura
+→ evaluar lectura guardada
+→ devolver lectura guardada
+```
+
+No se agregaron límites arbitrarios al umbral.
+
+Resultado:
+
+```text
+44 passed
+```
+
+---
+
+#### RED 3 — Persistencia y consulta de alertas
+
+Después se definieron pruebas para:
+
+- persistir alertas con SQLAlchemy;
+- consultar alertas por sensor;
+- disponer de un `AlertService`;
+- configurar `threshold` mediante `PATCH /sensors/{sensor_id}`;
+- consultar alertas mediante `GET /sensors/{sensor_id}/alerts`;
+- comprobar el flujo completo con SQLite.
+
+El escenario de integración definido fue:
+
+```text
+crear sensor
+→ configurar threshold=30.0
+→ registrar lectura 31.5
+→ generar alerta
+→ consultar alerta
+→ registrar lectura 30.0
+→ comprobar que no aparece una segunda alerta
+```
+
+El primer RED de esta etapa fue:
+
+```text
+ModuleNotFoundError: app.repositories.alert_repository
+ModuleNotFoundError: app.services.alert_service
+```
+
+#### GREEN 3A — Repositorio y servicio
+
+Codex creó:
+
+```text
+app/repositories/alert_repository.py
+app/services/alert_service.py
+```
+
+Se mantuvieron responsabilidades pequeñas:
+
+```text
+AlertRepository
+→ persistencia y consulta
+
+AlertService
+→ delegación de consulta
+```
+
+No se agregaron filtros, severidad, estados ni paginación.
+
+Después de esta implementación:
+
+```text
+4 failed, 11 passed
+```
+
+Los nuevos fallos permitieron identificar que la API todavía no exponía `threshold`.
+
+#### GREEN 3B — Threshold en API
+
+Se modificaron:
+
+```text
+app/schemas/sensor.py
+app/routers/sensors.py
+```
+
+`SensorResponse` pasó a mostrar el umbral y `SensorUpdate` permitió recibirlo mediante PATCH.
+
+Resultado:
+
+```text
+1 failed, 14 passed
+```
+
+El único fallo restante fue:
+
+```text
+GET /sensors/TEMP-01/alerts → 404
+```
+
+#### GREEN 3C1 — Endpoint de consulta
+
+Se crearon:
+
+```text
+app/schemas/alert.py
+app/routers/alerts.py
+```
+
+y se incorporó `AlertService` a las dependencias y el router a la aplicación.
+
+El endpoint:
+
+```text
+GET /sensors/{sensor_id}/alerts
+```
+
+ya respondió HTTP 200, pero devolvió:
+
+```json
+[]
+```
+
+Esto permitió comprobar que la capa de consulta estaba funcionando pero todavía faltaba conectar la detección de anomalías al flujo real de lecturas.
+
+#### GREEN 3C2 — Wiring de anomalías
+
+Finalmente se conectó `AnomalyService` desde `get_reading_service()` utilizando la misma sesión de SQLAlchemy.
+
+La composición quedó:
+
+```text
+ReadingService
+↓
+AnomalyService
+↓
+SQLAlchemyAlertRepository
+↓
+LoggingNotificationStrategy
+```
+
+También se creó `LoggingNotificationStrategy`, implementación intercambiable del contrato `NotificationStrategy`.
+
+Esta estrategia únicamente registra mediante `logging`:
+
+- `sensor_id`;
+- `reading_id`;
+- `value`;
+- `threshold`.
+
+No se incorporaron correos, SMS, llamadas HTTP ni servicios externos porque no eran necesarios para la actividad.
+
+Resultado de esta etapa:
+
+```text
+50 passed
+```
+
+---
+
+#### Persistencia y migración
+
+Después de completar la funcionalidad se revisó la integración con Alembic.
+
+Se agregó `Alert` al conjunto de modelos conocido por:
+
+```text
+app/models/__init__.py
+migrations/env.py
+```
+
+La base local contenía las tablas iniciales pero no tenía `alembic_version`, por lo que antes de generar una nueva revisión se verificó manualmente que su estructura coincidiera con la migración inicial.
+
+Después se marcó la revisión existente y se generó mediante autogenerate:
+
+```text
+41665aba7dee_agrega_alertas_y_umbral_por_sensor.py
+```
+
+La nueva migración contiene únicamente:
+
+```text
+CREATE TABLE alerts
+ADD COLUMN sensors.threshold
+```
+
+La tabla `alerts` incluye claves foráneas hacia:
+
+```text
+alerts.sensor_id → sensors.id
+alerts.reading_id → readings.id
+```
+
+La migración fue aplicada correctamente y Alembic quedó en:
+
+```text
+41665aba7dee (head)
+```
+
+---
+
+#### Revisión humana y decisiones
+
+Durante el desarrollo se rechazó implementar la feature completa en una sola solicitud a la IA.
+
+Se prefirió dividir el trabajo para poder identificar qué comportamiento introducía cada cambio y mantener una secuencia TDD comprobable.
+
+También se decidió no agregar funcionalidades que no estaban solicitadas, como:
+
+- severidad de alertas;
+- estado leído/no leído;
+- prioridades;
+- usuarios asociados;
+- paginación de alertas;
+- correo electrónico o SMS;
+- servicios externos de notificación;
+- límites arbitrarios para los umbrales.
+
+Se mantuvo una estrategia de notificación intercambiable mediante `Protocol`, de forma que otra implementación pueda incorporarse posteriormente sin modificar la lógica de detección.
+
+#### Resultado final
+
+La feature permite actualmente:
+
+```text
+configurar umbral por sensor
+→ recibir una lectura
+→ persistirla
+→ evaluar el umbral
+→ persistir una alerta si corresponde
+→ ejecutar una estrategia de notificación
+→ consultar las alertas mediante API
+```
+
+La validación final del proyecto produjo:
+
+```text
+Ruff: limpio
+Mypy: limpio
+Pytest: 84 passed
+Cobertura: 92.04 %
+Cobertura mínima requerida: 80 %
+Alembic: 41665aba7dee (head)
+```
+
+La implementación final cumple el comportamiento definido por las pruebas y conserva la separación existente entre modelos, repositorios, servicios, schemas, routers y dependencias.

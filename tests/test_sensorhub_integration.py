@@ -69,6 +69,7 @@ def test_create_and_query_reading_with_sqlite(
         "sensor_type": "temperature",
         "unit": "C",
         "is_active": True,
+        "threshold": None,
     }
 
     reading_response = client.post(
@@ -204,3 +205,73 @@ def test_update_delete_and_deactivate_with_sqlite(
     )
 
     assert inactive_reading_response.status_code == 400
+
+
+def test_configure_threshold_detect_and_query_alert_with_sqlite(
+    client: TestClient,
+) -> None:
+    """Comprueba el flujo completo de detección y consulta de alertas."""
+
+    sensor_response = client.post(
+        "/sensors",
+        json={
+            "id": "TEMP-01",
+            "name": "Sensor exterior",
+            "sensor_type": "temperature",
+            "unit": "C",
+        },
+    )
+
+    assert sensor_response.status_code == 201
+
+    threshold_response = client.patch(
+        "/sensors/TEMP-01",
+        json={
+            "threshold": 30.0,
+        },
+    )
+
+    assert threshold_response.status_code == 200
+    assert threshold_response.json()["threshold"] == 30.0
+
+    reading_response = client.post(
+        "/sensors/TEMP-01/readings",
+        json={
+            "value": 31.5,
+            "unit": "C",
+        },
+    )
+
+    assert reading_response.status_code == 201
+
+    reading_id = reading_response.json()["id"]
+    alerts_response = client.get("/sensors/TEMP-01/alerts")
+
+    assert alerts_response.status_code == 200
+
+    alerts = alerts_response.json()
+
+    assert len(alerts) == 1
+    assert alerts[0]["sensor_id"] == "TEMP-01"
+    assert alerts[0]["reading_id"] == reading_id
+    assert alerts[0]["value"] == 31.5
+    assert alerts[0]["threshold"] == 30.0
+    assert alerts[0]["id"] is not None
+    assert alerts[0]["created_at"] is not None
+
+    equal_reading_response = client.post(
+        "/sensors/TEMP-01/readings",
+        json={
+            "value": 30.0,
+            "unit": "C",
+        },
+    )
+
+    assert equal_reading_response.status_code == 201
+
+    alerts_after_equal_reading = client.get(
+        "/sensors/TEMP-01/alerts"
+    )
+
+    assert alerts_after_equal_reading.status_code == 200
+    assert alerts_after_equal_reading.json() == alerts
