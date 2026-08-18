@@ -54,7 +54,12 @@ def add_sensor_and_reading(
     return reading
 
 
-def make_alert(reading: Reading, *, threshold: float = 30.0) -> Alert:
+def make_alert(
+    reading: Reading,
+    *,
+    threshold: float = 30.0,
+    created_at: datetime = datetime(2026, 8, 14, 10, 1),
+) -> Alert:
     """Construye una alerta vinculada a una lectura almacenada."""
 
     return Alert(
@@ -62,7 +67,7 @@ def make_alert(reading: Reading, *, threshold: float = 30.0) -> Alert:
         reading_id=reading.id,
         value=reading.value,
         threshold=threshold,
-        created_at=datetime(2026, 8, 14, 10, 1),
+        created_at=created_at,
     )
 
 
@@ -131,5 +136,52 @@ def test_list_by_sensor_returns_only_requested_sensor_alerts(
             assert all(
                 alert.sensor_id == "TEMP-01" for alert in result
             )
+    finally:
+        engine.dispose()
+
+
+def test_list_by_sensor_applies_date_filters_and_pagination(
+    tmp_path: Path,
+) -> None:
+    engine = create_test_engine(tmp_path / "alerts.db")
+
+    try:
+        Base.metadata.create_all(bind=engine)
+
+        with Session(engine) as session:
+            reading = add_sensor_and_reading(
+                session,
+                "TEMP-01",
+                value=31.5,
+            )
+            repository = SQLAlchemyAlertRepository(session)
+            repository.add(
+                make_alert(
+                    reading,
+                    created_at=datetime(2026, 8, 14, 9, 0),
+                )
+            )
+            expected = repository.add(
+                make_alert(
+                    reading,
+                    created_at=datetime(2026, 8, 14, 10, 0),
+                )
+            )
+            repository.add(
+                make_alert(
+                    reading,
+                    created_at=datetime(2026, 8, 14, 11, 0),
+                )
+            )
+
+            result = repository.list_by_sensor(
+                "TEMP-01",
+                limit=1,
+                offset=0,
+                from_date=datetime(2026, 8, 14, 9, 30),
+                to_date=datetime(2026, 8, 14, 10, 30),
+            )
+
+            assert result == [expected]
     finally:
         engine.dispose()
