@@ -37,3 +37,14 @@ class ReadingResponse(BaseModel):
     value: float
     unit: SensorUnit
     received_at: datetime
+
+
+class ReadingStatisticsResponse(BaseModel):
+    """Estadísticas de las lecturas de un sensor en un período."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    sensor_id: str
+    minimum: float
+    maximum: float
+    average: float

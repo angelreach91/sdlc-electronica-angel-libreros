@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Protocol
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
@@ -29,6 +29,16 @@ class ReadingRepository(Protocol):
 
     def get_by_id(self, reading_id: int) -> Reading | None:
         """Busca una lectura mediante su identificador."""
+        ...
+
+    def get_statistics_by_sensor(
+        self,
+        sensor_id: str,
+        *,
+        from_date: datetime,
+        to_date: datetime,
+    ) -> tuple[float, float, float] | None:
+        """Calcula mínimo, máximo y promedio para un período."""
         ...
 
     def update(self, reading: Reading) -> Reading:
@@ -84,6 +94,36 @@ class SQLAlchemyReadingRepository:
     def get_by_id(self, reading_id: int) -> Reading | None:
         statement = select(Reading).where(Reading.id == reading_id)
         return self._session.scalar(statement)
+
+    def get_statistics_by_sensor(
+        self,
+        sensor_id: str,
+        *,
+        from_date: datetime,
+        to_date: datetime,
+    ) -> tuple[float, float, float] | None:
+        statement = select(
+            func.min(Reading.value),
+            func.max(Reading.value),
+            func.avg(Reading.value),
+            func.count(Reading.id),
+        ).where(
+            Reading.sensor_id == sensor_id,
+            Reading.received_at >= from_date,
+            Reading.received_at <= to_date,
+        )
+        minimum, maximum, average, count = self._session.execute(
+            statement
+        ).one()
+
+        if count == 0:
+            return None
+
+        return (
+            float(minimum),
+            float(maximum),
+            float(average),
+        )
 
     def update(self, reading: Reading) -> Reading:
         try:

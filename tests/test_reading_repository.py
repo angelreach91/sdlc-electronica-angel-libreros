@@ -171,6 +171,72 @@ def test_list_by_sensor_applies_pagination(
         engine.dispose()
 
 
+def test_get_statistics_by_sensor_aggregates_requested_period(
+    tmp_path: Path,
+) -> None:
+    engine = create_test_engine(tmp_path / "readings.db")
+
+    try:
+        Base.metadata.create_all(bind=engine)
+
+        with Session(engine) as session:
+            add_sensor(session, "TEMP-01")
+            add_sensor(session, "TEMP-02")
+            repository = SQLAlchemyReadingRepository(session)
+
+            repository.add(
+                make_reading("TEMP-01", value=-100.0, day=27)
+            )
+            repository.add(
+                make_reading("TEMP-01", value=20.0, day=28)
+            )
+            repository.add(
+                make_reading("TEMP-01", value=25.0, day=29)
+            )
+            repository.add(
+                make_reading("TEMP-01", value=30.0, day=30)
+            )
+            repository.add(
+                make_reading("TEMP-01", value=100.0, day=31)
+            )
+            repository.add(
+                make_reading("TEMP-02", value=1000.0, day=29)
+            )
+
+            result = repository.get_statistics_by_sensor(
+                "TEMP-01",
+                from_date=datetime(2026, 7, 28),
+                to_date=datetime(2026, 7, 30),
+            )
+
+            assert result == (20.0, 30.0, 25.0)
+    finally:
+        engine.dispose()
+
+
+def test_get_statistics_by_sensor_returns_none_without_readings(
+    tmp_path: Path,
+) -> None:
+    engine = create_test_engine(tmp_path / "readings.db")
+
+    try:
+        Base.metadata.create_all(bind=engine)
+
+        with Session(engine) as session:
+            add_sensor(session, "TEMP-01")
+            repository = SQLAlchemyReadingRepository(session)
+
+            result = repository.get_statistics_by_sensor(
+                "TEMP-01",
+                from_date=datetime(2026, 8, 1),
+                to_date=datetime(2026, 8, 2),
+            )
+
+            assert result is None
+    finally:
+        engine.dispose()
+
+
 def test_get_update_and_delete_reading_between_sessions(
     tmp_path: Path,
 ) -> None:

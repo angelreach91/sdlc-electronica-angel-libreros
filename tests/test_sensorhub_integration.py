@@ -242,6 +242,66 @@ def test_list_readings_rejects_invalid_date_range_with_sqlite(
     }
 
 
+def test_get_statistics_aggregates_sensor_readings_with_sqlite(
+    client: TestClient,
+) -> None:
+    """Comprueba estadísticas aisladas por sensor y período."""
+
+    for sensor_id in ("TEMP-STATS", "TEMP-OTHER"):
+        sensor_response = client.post(
+            "/sensors",
+            json={
+                "id": sensor_id,
+                "name": f"Sensor {sensor_id}",
+                "location": "Laboratorio",
+                "sensor_type": "temperature",
+                "unit": "C",
+            },
+        )
+        assert sensor_response.status_code == 201
+
+    reading_responses = [
+        client.post(
+            "/sensors/TEMP-STATS/readings",
+            json={"value": value, "unit": "C"},
+        )
+        for value in (20.0, 25.0, 30.0)
+    ]
+    assert all(
+        response.status_code == 201
+        for response in reading_responses
+    )
+
+    other_reading_response = client.post(
+        "/sensors/TEMP-OTHER/readings",
+        json={"value": 1000.0, "unit": "C"},
+    )
+    assert other_reading_response.status_code == 201
+
+    received_at_values = [
+        datetime.fromisoformat(response.json()["received_at"])
+        for response in reading_responses
+    ]
+    from_date = min(received_at_values) - timedelta(microseconds=1)
+    to_date = max(received_at_values) + timedelta(microseconds=1)
+
+    statistics_response = client.get(
+        "/sensors/TEMP-STATS/statistics",
+        params={
+            "from": from_date.isoformat(),
+            "to": to_date.isoformat(),
+        },
+    )
+
+    assert statistics_response.status_code == 200
+    assert statistics_response.json() == {
+        "sensor_id": "TEMP-STATS",
+        "minimum": 20.0,
+        "maximum": 30.0,
+        "average": 25.0,
+    }
+
+
 def test_update_delete_and_deactivate_with_sqlite(
     client: TestClient,
 ) -> None:

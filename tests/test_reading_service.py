@@ -35,6 +35,10 @@ class FakeReadingRepository:
             | None
         ) = None
         self.list_result: list[Reading] = []
+        self.statistics_arguments: (
+            tuple[str, datetime, datetime] | None
+        ) = None
+        self.statistics_result: tuple[float, float, float] | None = None
         self.get_arguments: list[int] = []
         self.update_calls: list[Reading] = []
         self.delete_calls: list[Reading] = []
@@ -69,6 +73,21 @@ class FakeReadingRepository:
         )
 
         return self.list_result
+
+    def get_statistics_by_sensor(
+        self,
+        sensor_id: str,
+        *,
+        from_date: datetime,
+        to_date: datetime,
+    ) -> tuple[float, float, float] | None:
+        self.statistics_arguments = (
+            sensor_id,
+            from_date,
+            to_date,
+        )
+
+        return self.statistics_result
 
     def get_by_id(self, reading_id: int) -> Reading | None:
         self.get_arguments.append(reading_id)
@@ -529,6 +548,119 @@ def test_list_by_sensor_rejects_mixed_datetime_awareness(
         )
 
     assert repository.list_arguments is None
+
+
+def test_get_statistics_returns_aggregated_values(
+    context: TestContext,
+) -> None:
+    service, repository, _ = context
+    repository.statistics_result = (20.0, 30.0, 25.0)
+
+    result = service.get_statistics(
+        "TEMP-01",
+        from_date=RANGE_START,
+        to_date=RANGE_END,
+    )
+
+    assert result.sensor_id == "TEMP-01"
+    assert result.minimum == 20.0
+    assert result.maximum == 30.0
+    assert result.average == 25.0
+
+
+def test_get_statistics_normalizes_sensor_id_and_checks_sensor(
+    context: TestContext,
+) -> None:
+    service, repository, sensor_repository = context
+    repository.statistics_result = (20.0, 30.0, 25.0)
+
+    service.get_statistics(
+        " TEMP-01 ",
+        from_date=RANGE_START,
+        to_date=RANGE_END,
+    )
+
+    assert sensor_repository.get_arguments[-1] == "TEMP-01"
+    assert repository.statistics_arguments == (
+        "TEMP-01",
+        RANGE_START,
+        RANGE_END,
+    )
+
+
+def test_get_statistics_rejects_unknown_sensor(
+    context: TestContext,
+) -> None:
+    service, repository, sensor_repository = context
+
+    with pytest.raises(LookupError, match="No existe el sensor"):
+        service.get_statistics(
+            "NO-EXISTE",
+            from_date=RANGE_START,
+            to_date=RANGE_END,
+        )
+
+    assert sensor_repository.get_arguments[-1] == "NO-EXISTE"
+    assert repository.statistics_arguments is None
+
+
+def test_get_statistics_rejects_invalid_date_range(
+    context: TestContext,
+) -> None:
+    service, repository, _ = context
+
+    with pytest.raises(
+        ValueError,
+        match="from_date no puede ser posterior a to_date",
+    ):
+        service.get_statistics(
+            "TEMP-01",
+            from_date=RANGE_END,
+            to_date=RANGE_START,
+        )
+
+    assert repository.statistics_arguments is None
+
+
+def test_get_statistics_rejects_mixed_datetime_awareness(
+    context: TestContext,
+) -> None:
+    service, repository, _ = context
+
+    with pytest.raises(
+        ValueError,
+        match="misma conciencia de zona horaria",
+    ):
+        service.get_statistics(
+            "TEMP-01",
+            from_date=datetime(2026, 7, 28),
+            to_date=RANGE_END,
+        )
+
+    assert repository.statistics_arguments is None
+
+
+def test_get_statistics_rejects_period_without_readings(
+    context: TestContext,
+) -> None:
+    service, repository, _ = context
+    repository.statistics_result = None
+
+    with pytest.raises(
+        LookupError,
+        match="No existen lecturas para el sensor TEMP-01",
+    ):
+        service.get_statistics(
+            "TEMP-01",
+            from_date=RANGE_START,
+            to_date=RANGE_END,
+        )
+
+    assert repository.statistics_arguments == (
+        "TEMP-01",
+        RANGE_START,
+        RANGE_END,
+    )
 
 
 def test_get_by_id_handles_existing_and_missing(
