@@ -404,3 +404,60 @@ def test_configure_threshold_detect_and_query_alert_with_sqlite(
 
     assert alerts_after_equal_reading.status_code == 200
     assert alerts_after_equal_reading.json() == alerts
+
+
+def test_alert_lifecycle_updates_active_alerts_with_sqlite(
+    client: TestClient,
+) -> None:
+    """Comprueba el ciclo completo de una alerta hasta su resolución."""
+
+    sensor_response = client.post(
+        "/sensors",
+        json={
+            "id": "TEMP-LIFECYCLE",
+            "name": "Sensor de ciclo de alerta",
+            "location": "Laboratorio",
+            "sensor_type": "temperature",
+            "unit": "C",
+            "threshold": 30.0,
+        },
+    )
+    assert sensor_response.status_code == 201
+
+    reading_response = client.post(
+        "/sensors/TEMP-LIFECYCLE/readings",
+        json={"value": 31.5, "unit": "C"},
+    )
+    assert reading_response.status_code == 201
+
+    alerts_response = client.get(
+        "/sensors/TEMP-LIFECYCLE/alerts"
+    )
+    assert alerts_response.status_code == 200
+    alert = alerts_response.json()[0]
+    alert_id = alert["id"]
+    assert alert["status"] == "open"
+
+    acknowledge_response = client.patch(
+        f"/alerts/{alert_id}/status",
+        json={"status": "acknowledged"},
+    )
+    assert acknowledge_response.status_code == 200
+    assert acknowledge_response.json()["status"] == "acknowledged"
+
+    active_response = client.get("/alerts/active")
+    assert active_response.status_code == 200
+    assert alert_id in [item["id"] for item in active_response.json()]
+
+    resolve_response = client.patch(
+        f"/alerts/{alert_id}/status",
+        json={"status": "resolved"},
+    )
+    assert resolve_response.status_code == 200
+    assert resolve_response.json()["status"] == "resolved"
+
+    active_after_resolution = client.get("/alerts/active")
+    assert active_after_resolution.status_code == 200
+    assert alert_id not in [
+        item["id"] for item in active_after_resolution.json()
+    ]

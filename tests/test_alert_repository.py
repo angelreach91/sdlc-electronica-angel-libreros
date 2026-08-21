@@ -5,6 +5,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session
 
+from app.alert_status import AlertStatus
 from app.db import Base
 from app.models.alert import Alert
 from app.models.reading import Reading
@@ -60,6 +61,7 @@ def make_alert(
     *,
     threshold: float = 30.0,
     created_at: datetime = datetime(2026, 8, 14, 10, 1),
+    status: AlertStatus = AlertStatus.OPEN,
 ) -> Alert:
     """Construye una alerta vinculada a una lectura almacenada."""
 
@@ -69,6 +71,7 @@ def make_alert(
         value=reading.value,
         threshold=threshold,
         created_at=created_at,
+        status=status.value,
     )
 
 
@@ -104,6 +107,7 @@ def test_alert_repository_persists_and_recovers_alert_between_sessions(
             assert stored.value == 31.5
             assert stored.threshold == 30.0
             assert stored.created_at == datetime(2026, 8, 14, 10, 1)
+            assert stored.status == AlertStatus.OPEN.value
     finally:
         engine.dispose()
 
@@ -184,5 +188,102 @@ def test_list_by_sensor_applies_date_filters_and_pagination(
             )
 
             assert result == [expected]
+    finally:
+        engine.dispose()
+
+
+def test_get_by_id_recovers_persisted_alert(tmp_path: Path) -> None:
+    engine = create_test_engine(tmp_path / "alerts.db")
+
+    try:
+        Base.metadata.create_all(bind=engine)
+
+        with Session(engine) as session:
+            reading = add_sensor_and_reading(
+                session,
+                "TEMP-01",
+                value=31.5,
+            )
+            repository = SQLAlchemyAlertRepository(session)
+            alert_id = repository.add(make_alert(reading)).id
+
+        with Session(engine) as session:
+            stored = SQLAlchemyAlertRepository(session).get_by_id(alert_id)
+
+            assert stored is not None
+            assert stored.id == alert_id
+            assert stored.status == AlertStatus.OPEN.value
+    finally:
+        engine.dispose()
+
+
+def test_update_persists_status_between_sessions(tmp_path: Path) -> None:
+    engine = create_test_engine(tmp_path / "alerts.db")
+
+    try:
+        Base.metadata.create_all(bind=engine)
+
+        with Session(engine) as session:
+            reading = add_sensor_and_reading(
+                session,
+                "TEMP-01",
+                value=31.5,
+            )
+            repository = SQLAlchemyAlertRepository(session)
+            alert = repository.add(make_alert(reading))
+            alert.status = AlertStatus.ACKNOWLEDGED.value
+            repository.update(alert)
+            alert_id = alert.id
+
+        with Session(engine) as session:
+            stored = SQLAlchemyAlertRepository(session).get_by_id(alert_id)
+
+            assert stored is not None
+            assert stored.status == AlertStatus.ACKNOWLEDGED.value
+    finally:
+        engine.dispose()
+
+
+def test_list_active_returns_only_open_and_acknowledged(
+    tmp_path: Path,
+) -> None:
+    engine = create_test_engine(tmp_path / "alerts.db")
+
+    try:
+        Base.metadata.create_all(bind=engine)
+
+        with Session(engine) as session:
+            reading = add_sensor_and_reading(
+                session,
+                "TEMP-01",
+                value=31.5,
+            )
+            repository = SQLAlchemyAlertRepository(session)
+            open_alert = repository.add(
+                make_alert(
+                    reading,
+                    created_at=datetime(2026, 8, 14, 10, 1),
+                    status=AlertStatus.OPEN,
+                )
+            )
+            acknowledged_alert = repository.add(
+                make_alert(
+                    reading,
+                    created_at=datetime(2026, 8, 14, 10, 2),
+                    status=AlertStatus.ACKNOWLEDGED,
+                )
+            )
+            resolved_alert = repository.add(
+                make_alert(
+                    reading,
+                    created_at=datetime(2026, 8, 14, 10, 3),
+                    status=AlertStatus.RESOLVED,
+                )
+            )
+
+            result = repository.list_active()
+
+            assert result == [open_alert, acknowledged_alert]
+            assert resolved_alert not in result
     finally:
         engine.dispose()

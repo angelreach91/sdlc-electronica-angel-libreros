@@ -1,6 +1,7 @@
 from datetime import datetime
 from typing import Protocol
 
+from app.alert_status import AlertStatus
 from app.models.alert import Alert
 
 
@@ -17,6 +18,23 @@ class AlertQueryRepository(Protocol):
         to_date: datetime | None = None,
     ) -> list[Alert]:
         """Consulta alertas de un sensor con filtros y paginación."""
+        ...
+
+    def get_by_id(self, alert_id: int) -> Alert | None:
+        """Busca una alerta mediante su identificador."""
+        ...
+
+    def update(self, alert: Alert) -> Alert:
+        """Persiste los cambios de una alerta."""
+        ...
+
+    def list_active(
+        self,
+        *,
+        limit: int = 50,
+        offset: int = 0,
+    ) -> list[Alert]:
+        """Consulta las alertas abiertas o reconocidas."""
         ...
 
 
@@ -65,3 +83,61 @@ class AlertService:
             from_date=from_date,
             to_date=to_date,
         )
+
+    def get_by_id(self, alert_id: int) -> Alert | None:
+        """Busca una alerta mediante su identificador."""
+
+        self._validate_alert_id(alert_id)
+        return self._repository.get_by_id(alert_id)
+
+    def update_status(
+        self,
+        alert_id: int,
+        status: AlertStatus,
+    ) -> Alert | None:
+        """Avanza una alerta al siguiente estado permitido."""
+
+        self._validate_alert_id(alert_id)
+        alert = self._repository.get_by_id(alert_id)
+
+        if alert is None:
+            return None
+
+        current_status = AlertStatus(alert.status)
+        valid_transitions = {
+            (AlertStatus.OPEN, AlertStatus.ACKNOWLEDGED),
+            (AlertStatus.ACKNOWLEDGED, AlertStatus.RESOLVED),
+        }
+
+        if (current_status, status) not in valid_transitions:
+            raise ValueError(
+                "transición de alerta inválida: "
+                f"{current_status.value} -> {status.value}"
+            )
+
+        alert.status = status.value
+        return self._repository.update(alert)
+
+    def list_active(
+        self,
+        *,
+        limit: int = 50,
+        offset: int = 0,
+    ) -> list[Alert]:
+        """Devuelve las alertas abiertas o reconocidas."""
+
+        if not 1 <= limit <= 100:
+            raise ValueError("limit debe estar entre 1 y 100")
+
+        if offset < 0:
+            raise ValueError("offset no puede ser negativo")
+
+        return self._repository.list_active(
+            limit=limit,
+            offset=offset,
+        )
+
+    @staticmethod
+    def _validate_alert_id(alert_id: int) -> None:
+        if alert_id <= 0:
+            raise ValueError("alert_id debe ser mayor que cero")

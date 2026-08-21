@@ -3,6 +3,7 @@ from collections.abc import Callable
 from datetime import datetime
 from typing import Protocol
 
+from app.alert_status import AlertStatus
 from app.models.alert import Alert
 from app.models.reading import Reading
 from app.repositories.sensor_repository import SensorLookupRepository
@@ -74,6 +75,7 @@ class AnomalyService:
             reading_id=reading.id,
             value=reading.value,
             threshold=threshold,
+            status=AlertStatus.OPEN.value,
             created_at=self._clock(),
         )
         saved_alert = self._alert_repository.add(alert)

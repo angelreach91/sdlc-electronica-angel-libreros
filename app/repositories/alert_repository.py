@@ -5,6 +5,7 @@ from sqlalchemy import select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
+from app.alert_status import AlertStatus
 from app.models.alert import Alert
 
 
@@ -25,6 +26,23 @@ class AlertRepository(Protocol):
         to_date: datetime | None = None,
     ) -> list[Alert]:
         """Consulta alertas aplicando filtros y paginación."""
+        ...
+
+    def get_by_id(self, alert_id: int) -> Alert | None:
+        """Busca una alerta mediante su identificador."""
+        ...
+
+    def update(self, alert: Alert) -> Alert:
+        """Confirma y devuelve los cambios de una alerta."""
+        ...
+
+    def list_active(
+        self,
+        *,
+        limit: int = 50,
+        offset: int = 0,
+    ) -> list[Alert]:
+        """Consulta las alertas abiertas o reconocidas."""
         ...
 
 
@@ -66,5 +84,45 @@ class SQLAlchemyAlertRepository:
             Alert.created_at.asc(),
             Alert.id.asc(),
         ).limit(limit).offset(offset)
+
+        return list(self._session.scalars(statement).all())
+
+    def get_by_id(self, alert_id: int) -> Alert | None:
+        statement = select(Alert).where(Alert.id == alert_id)
+        return self._session.scalar(statement)
+
+    def update(self, alert: Alert) -> Alert:
+        try:
+            self._session.commit()
+        except SQLAlchemyError:
+            self._session.rollback()
+            raise
+
+        self._session.refresh(alert)
+        return alert
+
+    def list_active(
+        self,
+        *,
+        limit: int = 50,
+        offset: int = 0,
+    ) -> list[Alert]:
+        statement = (
+            select(Alert)
+            .where(
+                Alert.status.in_(
+                    (
+                        AlertStatus.OPEN.value,
+                        AlertStatus.ACKNOWLEDGED.value,
+                    )
+                )
+            )
+            .order_by(
+                Alert.created_at.asc(),
+                Alert.id.asc(),
+            )
+            .limit(limit)
+            .offset(offset)
+        )
 
         return list(self._session.scalars(statement).all())
