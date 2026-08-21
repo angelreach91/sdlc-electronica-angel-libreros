@@ -10,7 +10,6 @@ from fastapi import (
 )
 
 from app.dependencies import get_sensor_service
-from app.exceptions import SensorAlreadyExistsError
 from app.schemas.sensor import (
     SensorCreate,
     SensorResponse,
@@ -27,20 +26,6 @@ router = APIRouter(
     prefix="/sensors",
     tags=["sensors"],
 )
-
-
-def _bad_request(error: ValueError) -> HTTPException:
-    return HTTPException(
-        status_code=status.HTTP_400_BAD_REQUEST,
-        detail=str(error),
-    )
-
-
-def _conflict(error: SensorAlreadyExistsError) -> HTTPException:
-    return HTTPException(
-        status_code=status.HTTP_409_CONFLICT,
-        detail=str(error),
-    )
 
 
 def _sensor_not_found(sensor_id: str) -> HTTPException:
@@ -61,19 +46,14 @@ def create_sensor(
 ) -> SensorResponse:
     """Registra un sensor."""
 
-    try:
-        sensor = service.create_sensor(
-            sensor_id=sensor_data.id,
-            name=sensor_data.name,
-            sensor_type=sensor_data.sensor_type,
-            unit=sensor_data.unit,
-            location=sensor_data.location,
-            threshold=sensor_data.threshold,
-        )
-    except SensorAlreadyExistsError as error:
-        raise _conflict(error) from error
-    except ValueError as error:
-        raise _bad_request(error) from error
+    sensor = service.create_sensor(
+        sensor_id=sensor_data.id,
+        name=sensor_data.name,
+        sensor_type=sensor_data.sensor_type,
+        unit=sensor_data.unit,
+        location=sensor_data.location,
+        threshold=sensor_data.threshold,
+    )
 
     return SensorResponse.model_validate(sensor)
 
@@ -89,13 +69,10 @@ def list_sensors(
 ) -> list[SensorResponse]:
     """Consulta los sensores registrados."""
 
-    try:
-        sensors = service.list_sensors(
-            limit=limit,
-            offset=offset,
-        )
-    except ValueError as error:
-        raise _bad_request(error) from error
+    sensors = service.list_sensors(
+        limit=limit,
+        offset=offset,
+    )
 
     return [
         SensorResponse.model_validate(sensor)
@@ -113,10 +90,7 @@ def get_sensor(
 ) -> SensorResponse:
     """Devuelve un sensor mediante su identificador."""
 
-    try:
-        sensor = service.get_by_id(sensor_id)
-    except ValueError as error:
-        raise _bad_request(error) from error
+    sensor = service.get_by_id(sensor_id)
 
     if sensor is None:
         raise _sensor_not_found(sensor_id)
@@ -135,16 +109,13 @@ def update_sensor(
 ) -> SensorResponse:
     """Actualiza parcialmente un sensor."""
 
-    try:
-        sensor = service.update_sensor(
-            sensor_id,
-            name=sensor_data.name,
-            location=sensor_data.location,
-            is_active=sensor_data.is_active,
-            threshold=sensor_data.threshold,
-        )
-    except ValueError as error:
-        raise _bad_request(error) from error
+    sensor = service.update_sensor(
+        sensor_id,
+        name=sensor_data.name,
+        location=sensor_data.location,
+        is_active=sensor_data.is_active,
+        threshold=sensor_data.threshold,
+    )
 
     if sensor is None:
         raise _sensor_not_found(sensor_id)
@@ -162,10 +133,7 @@ def deactivate_sensor(
 ) -> Response:
     """Desactiva un sensor mediante su identificador."""
 
-    try:
-        deactivated = service.deactivate_sensor(sensor_id)
-    except ValueError as error:
-        raise _bad_request(error) from error
+    deactivated = service.deactivate_sensor(sensor_id)
 
     if not deactivated:
         raise _sensor_not_found(sensor_id)
