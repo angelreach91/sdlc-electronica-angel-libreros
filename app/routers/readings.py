@@ -29,13 +29,6 @@ router = APIRouter(
 )
 
 
-def _bad_request(error: ValueError) -> HTTPException:
-    return HTTPException(
-        status_code=status.HTTP_400_BAD_REQUEST,
-        detail=str(error),
-    )
-
-
 def _not_found(detail: str) -> HTTPException:
     return HTTPException(
         status_code=status.HTTP_404_NOT_FOUND,
@@ -55,16 +48,11 @@ def create_reading(
 ) -> ReadingResponse:
     """Registra una lectura para el sensor indicado."""
 
-    try:
-        reading = service.create_reading(
-            sensor_id=sensor_id,
-            value=reading_data.value,
-            unit=reading_data.unit,
-        )
-    except LookupError as error:
-        raise _not_found(str(error)) from error
-    except ValueError as error:
-        raise _bad_request(error) from error
+    reading = service.create_reading(
+        sensor_id=sensor_id,
+        value=reading_data.value,
+        unit=reading_data.unit,
+    )
 
     return ReadingResponse.model_validate(reading)
 
@@ -89,18 +77,13 @@ def list_readings(
 ) -> list[ReadingResponse]:
     """Consulta las lecturas registradas para un sensor."""
 
-    try:
-        readings = service.list_by_sensor(
-            sensor_id,
-            limit=limit,
-            offset=offset,
-            from_date=from_date,
-            to_date=to_date,
-        )
-    except LookupError as error:
-        raise _not_found(str(error)) from error
-    except ValueError as error:
-        raise _bad_request(error) from error
+    readings = service.list_by_sensor(
+        sensor_id,
+        limit=limit,
+        offset=offset,
+        from_date=from_date,
+        to_date=to_date,
+    )
 
     return [
         ReadingResponse.model_validate(reading)
@@ -120,16 +103,11 @@ def get_statistics(
 ) -> ReadingStatisticsResponse:
     """Devuelve mínimo, máximo y promedio para un período."""
 
-    try:
-        statistics = service.get_statistics(
-            sensor_id,
-            from_date=from_date,
-            to_date=to_date,
-        )
-    except LookupError as error:
-        raise _not_found(str(error)) from error
-    except ValueError as error:
-        raise _bad_request(error) from error
+    statistics = service.get_statistics(
+        sensor_id,
+        from_date=from_date,
+        to_date=to_date,
+    )
 
     return ReadingStatisticsResponse.model_validate(statistics)
 
@@ -144,10 +122,7 @@ def get_reading(
 ) -> ReadingResponse:
     """Devuelve una lectura mediante su identificador."""
 
-    try:
-        reading = service.get_by_id(reading_id)
-    except ValueError as error:
-        raise _bad_request(error) from error
+    reading = service.get_by_id(reading_id)
 
     if reading is None:
         raise _not_found(
@@ -168,16 +143,11 @@ def update_reading(
 ) -> ReadingResponse:
     """Actualiza parcialmente una lectura existente."""
 
-    try:
-        reading = service.update_reading(
-            reading_id,
-            value=reading_data.value,
-            unit=reading_data.unit,
-        )
-    except LookupError as error:
-        raise _not_found(str(error)) from error
-    except ValueError as error:
-        raise _bad_request(error) from error
+    reading = service.update_reading(
+        reading_id,
+        value=reading_data.value,
+        unit=reading_data.unit,
+    )
 
     if reading is None:
         raise _not_found(
@@ -197,10 +167,7 @@ def delete_reading(
 ) -> Response:
     """Elimina una lectura mediante su identificador."""
 
-    try:
-        deleted = service.delete_reading(reading_id)
-    except ValueError as error:
-        raise _bad_request(error) from error
+    deleted = service.delete_reading(reading_id)
 
     if not deleted:
         raise _not_found(
