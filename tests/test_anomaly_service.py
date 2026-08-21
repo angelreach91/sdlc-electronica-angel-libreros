@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from datetime import datetime, timezone
 
+from app.alert_status import AlertStatus
 from app.models.alert import Alert
 from app.models.reading import Reading
 from app.services.anomaly_service import AnomalyService
@@ -162,6 +163,17 @@ def test_created_alert_preserves_reading_threshold_and_clock_data() -> None:
     assert alert.value == 31.5
     assert alert.threshold == THRESHOLD
     assert alert.created_at == FIXED_TIME
+
+
+def test_value_above_threshold_creates_open_alert() -> None:
+    service, _, alert_repository, _ = create_context(threshold=THRESHOLD)
+    reading = create_reading(value=31.5)
+
+    alert = service.evaluate(reading)
+
+    assert alert is not None
+    assert alert.status == AlertStatus.OPEN
+    assert alert_repository.add_calls == [alert]
 
 
 def test_created_alert_is_sent_to_injected_notification_strategy() -> None:

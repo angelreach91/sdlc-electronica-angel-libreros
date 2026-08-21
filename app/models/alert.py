@@ -3,6 +3,7 @@ from datetime import datetime
 from sqlalchemy import DateTime, Float, ForeignKey, String
 from sqlalchemy.orm import Mapped, mapped_column
 
+from app.alert_status import AlertStatus
 from app.db import Base
 
 
@@ -28,6 +29,11 @@ class Alert(Base):
     threshold: Mapped[float] = mapped_column(
         Float,
         nullable=False,
+    )
+    status: Mapped[str] = mapped_column(
+        String(20),
+        nullable=False,
+        default=AlertStatus.OPEN.value,
     )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
