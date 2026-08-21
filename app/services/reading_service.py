@@ -1,4 +1,5 @@
 from collections.abc import Callable
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from math import isfinite
 from typing import Protocol
@@ -26,6 +27,16 @@ class AnomalyEvaluator(Protocol):
     def evaluate(self, reading: Reading) -> object | None:
         """Evalúa una lectura persistida."""
         ...
+
+
+@dataclass(frozen=True)
+class ReadingStatistics:
+    """Resume las lecturas de un sensor dentro de un período."""
+
+    sensor_id: str
+    minimum: float
+    maximum: float
+    average: float
 
 
 class ReadingService:
@@ -99,19 +110,7 @@ class ReadingService:
             raise ValueError("offset no puede ser negativo")
 
         if from_date is not None and to_date is not None:
-            from_date_is_aware = from_date.utcoffset() is not None
-            to_date_is_aware = to_date.utcoffset() is not None
-
-            if from_date_is_aware != to_date_is_aware:
-                raise ValueError(
-                    "from_date y to_date deben tener la misma "
-                    "conciencia de zona horaria"
-                )
-
-            if from_date > to_date:
-                raise ValueError(
-                    "from_date no puede ser posterior a to_date"
-                )
+            self._validate_date_range(from_date, to_date)
 
         return self._reading_repository.list_by_sensor(
             normalized_sensor_id,
@@ -119,6 +118,39 @@ class ReadingService:
             offset=offset,
             from_date=from_date,
             to_date=to_date,
+        )
+
+    def get_statistics(
+        self,
+        sensor_id: str,
+        *,
+        from_date: datetime,
+        to_date: datetime,
+    ) -> ReadingStatistics:
+        """Obtiene las estadísticas de un sensor dentro de un período."""
+
+        normalized_sensor_id = self._normalize_sensor_id(sensor_id)
+        self._get_sensor_or_raise(normalized_sensor_id)
+        self._validate_date_range(from_date, to_date)
+
+        statistics = self._reading_repository.get_statistics_by_sensor(
+            normalized_sensor_id,
+            from_date=from_date,
+            to_date=to_date,
+        )
+
+        if statistics is None:
+            raise LookupError(
+                f"No existen lecturas para el sensor {normalized_sensor_id} "
+                "en el período solicitado"
+            )
+
+        minimum, maximum, average = statistics
+        return ReadingStatistics(
+            sensor_id=normalized_sensor_id,
+            minimum=minimum,
+            maximum=maximum,
+            average=average,
         )
 
     def get_by_id(self, reading_id: int) -> Reading | None:
@@ -232,6 +264,25 @@ class ReadingService:
             raise ValueError("sensor_id no puede estar vacío")
 
         return normalized_sensor_id
+
+    @staticmethod
+    def _validate_date_range(
+        from_date: datetime,
+        to_date: datetime,
+    ) -> None:
+        from_date_is_aware = from_date.utcoffset() is not None
+        to_date_is_aware = to_date.utcoffset() is not None
+
+        if from_date_is_aware != to_date_is_aware:
+            raise ValueError(
+                "from_date y to_date deben tener la misma "
+                "conciencia de zona horaria"
+            )
+
+        if from_date > to_date:
+            raise ValueError(
+                "from_date no puede ser posterior a to_date"
+            )
 
     @staticmethod
     def _validate_reading_id(reading_id: int) -> None:

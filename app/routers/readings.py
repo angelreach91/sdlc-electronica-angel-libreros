@@ -14,6 +14,7 @@ from app.dependencies import get_reading_service
 from app.schemas.reading import (
     ReadingCreate,
     ReadingResponse,
+    ReadingStatisticsResponse,
     ReadingUpdate,
 )
 from app.services.reading_service import ReadingService
@@ -105,6 +106,32 @@ def list_readings(
         ReadingResponse.model_validate(reading)
         for reading in readings
     ]
+
+
+@router.get(
+    "/sensors/{sensor_id}/statistics",
+    response_model=ReadingStatisticsResponse,
+)
+def get_statistics(
+    sensor_id: str,
+    service: ReadingServiceDependency,
+    from_date: Annotated[datetime, Query(alias="from")],
+    to_date: Annotated[datetime, Query(alias="to")],
+) -> ReadingStatisticsResponse:
+    """Devuelve mínimo, máximo y promedio para un período."""
+
+    try:
+        statistics = service.get_statistics(
+            sensor_id,
+            from_date=from_date,
+            to_date=to_date,
+        )
+    except LookupError as error:
+        raise _not_found(str(error)) from error
+    except ValueError as error:
+        raise _bad_request(error) from error
+
+    return ReadingStatisticsResponse.model_validate(statistics)
 
 
 @router.get(
