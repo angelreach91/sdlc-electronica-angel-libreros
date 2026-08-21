@@ -8,8 +8,10 @@ class SensorCreate(BaseModel):
 
     id: str = Field(min_length=1, max_length=100)
     name: str = Field(min_length=1, max_length=100)
+    location: str = Field(min_length=1, max_length=150)
     sensor_type: SensorType
     unit: SensorUnit
+    threshold: float | None = None
 
 
 class SensorUpdate(BaseModel):
@@ -22,6 +24,11 @@ class SensorUpdate(BaseModel):
         min_length=1,
         max_length=100,
     )
+    location: str | None = Field(
+        default=None,
+        min_length=1,
+        max_length=150,
+    )
     is_active: bool | None = None
     threshold: float | None = None
 
@@ -33,6 +40,7 @@ class SensorResponse(BaseModel):
 
     id: str
     name: str
+    location: str
     sensor_type: SensorType
     unit: SensorUnit
     is_active: bool

@@ -15,13 +15,22 @@ class FakeSensorService:
 
     def __init__(self) -> None:
         self.create_arguments: (
-            tuple[str, str, SensorType, SensorUnit] | None
+            tuple[
+                str,
+                str,
+                SensorType,
+                SensorUnit,
+                str,
+                float | None,
+            ]
+            | None
         ) = None
         self.list_arguments: tuple[int, int] | None = None
         self.get_arguments: str | None = None
         self.update_arguments: (
             tuple[
                 str,
+                str | None,
                 str | None,
                 bool | None,
                 float | None,
@@ -34,6 +43,7 @@ class FakeSensorService:
         self.get_result: Sensor | None = Sensor(
             id="TEMP-01",
             name="Sensor de temperatura",
+            location="Laboratorio",
             sensor_type="temperature",
             unit="C",
             is_active=True,
@@ -45,12 +55,16 @@ class FakeSensorService:
         name: str,
         sensor_type: SensorType,
         unit: SensorUnit,
+        location: str,
+        threshold: float | None = None,
     ) -> Sensor:
         self.create_arguments = (
             sensor_id,
             name,
             sensor_type,
             unit,
+            location,
+            threshold,
         )
 
         if self.create_error is not None:
@@ -59,9 +73,11 @@ class FakeSensorService:
         return Sensor(
             id=sensor_id,
             name=name,
+            location=location,
             sensor_type=sensor_type.value,
             unit=unit.value,
             is_active=True,
+            threshold=threshold,
         )
 
     def list_sensors(
@@ -76,6 +92,7 @@ class FakeSensorService:
             Sensor(
                 id="HUM-01",
                 name="Sensor de humedad",
+                location="Bodega",
                 sensor_type="humidity",
                 unit="%",
                 is_active=True,
@@ -83,6 +100,7 @@ class FakeSensorService:
             Sensor(
                 id="TEMP-01",
                 name="Sensor de temperatura",
+                location="Laboratorio",
                 sensor_type="temperature",
                 unit="C",
                 is_active=True,
@@ -98,12 +116,14 @@ class FakeSensorService:
         sensor_id: str,
         *,
         name: str | None = None,
+        location: str | None = None,
         is_active: bool | None = None,
         threshold: float | None = None,
     ) -> Sensor | None:
         self.update_arguments = (
             sensor_id,
             name,
+            location,
             is_active,
             threshold,
         )
@@ -142,6 +162,8 @@ def test_create_sensor_returns_created_sensor() -> None:
                 "name": "Sensor exterior",
                 "sensor_type": "temperature",
                 "unit": "C",
+                "location": "Invernadero norte",
+                "threshold": 30.5,
             },
         )
 
@@ -151,8 +173,9 @@ def test_create_sensor_returns_created_sensor() -> None:
         "name": "Sensor exterior",
         "sensor_type": "temperature",
         "unit": "C",
+        "location": "Invernadero norte",
         "is_active": True,
-        "threshold": None,
+        "threshold": 30.5,
     }
 
     assert service.create_arguments == (
@@ -160,6 +183,8 @@ def test_create_sensor_returns_created_sensor() -> None:
         "Sensor exterior",
         SensorType.TEMPERATURE,
         SensorUnit.CELSIUS,
+        "Invernadero norte",
+        30.5,
     )
 
 
@@ -203,6 +228,7 @@ def test_create_sensor_translates_business_error_to_400() -> None:
                 "name": "Sensor exterior",
                 "sensor_type": "temperature",
                 "unit": "%",
+                "location": "Exterior",
             },
         )
 
@@ -229,6 +255,7 @@ def test_create_sensor_translates_duplicate_to_409() -> None:
                 "name": "Sensor exterior",
                 "sensor_type": "temperature",
                 "unit": "C",
+                "location": "Exterior",
             },
         )
 
@@ -263,6 +290,7 @@ def test_create_sensor_rejects_unknown_type_with_422() -> None:
                 "name": "Sensor exterior",
                 "sensor_type": "thermometer",
                 "unit": "C",
+                "location": "Exterior",
             },
         )
 
@@ -291,6 +319,7 @@ def test_update_sensor_forwards_and_returns_threshold() -> None:
     service.update_result = Sensor(
         id="TEMP-01",
         name="Sensor de temperatura",
+        location="Laboratorio",
         sensor_type="temperature",
         unit="C",
         is_active=True,
@@ -310,11 +339,13 @@ def test_update_sensor_forwards_and_returns_threshold() -> None:
         "TEMP-01",
         None,
         None,
+        None,
         30.0,
     )
     assert response.json() == {
         "id": "TEMP-01",
         "name": "Sensor de temperatura",
+        "location": "Laboratorio",
         "sensor_type": "temperature",
         "unit": "C",
         "is_active": True,

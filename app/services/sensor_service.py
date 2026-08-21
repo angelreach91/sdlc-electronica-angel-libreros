@@ -20,11 +20,14 @@ class SensorService:
         name: str,
         sensor_type: SensorType,
         unit: SensorUnit,
+        location: str,
+        threshold: float | None = None,
     ) -> Sensor:
         """Valida y registra un nuevo sensor."""
 
         normalized_sensor_id = self._normalize_sensor_id(sensor_id)
         normalized_name = self._normalize_name(name)
+        normalized_location = self._normalize_location(location)
 
         if self._repository.get_by_id(normalized_sensor_id) is not None:
             raise SensorAlreadyExistsError(
@@ -36,10 +39,11 @@ class SensorService:
         sensor = Sensor(
             id=normalized_sensor_id,
             name=normalized_name,
+            location=normalized_location,
             sensor_type=sensor_type.value,
             unit=unit.value,
             is_active=True,
-            threshold=None,
+            threshold=threshold,
         )
 
         return self._repository.add(sensor)
@@ -70,6 +74,7 @@ class SensorService:
         sensor_id: str,
         *,
         name: str | None = None,
+        location: str | None = None,
         is_active: bool | None = None,
         threshold: float | None = None,
     ) -> Sensor | None:
@@ -77,7 +82,12 @@ class SensorService:
 
         normalized_sensor_id = self._normalize_sensor_id(sensor_id)
 
-        if name is None and is_active is None and threshold is None:
+        if (
+            name is None
+            and location is None
+            and is_active is None
+            and threshold is None
+        ):
             raise ValueError(
                 "debe proporcionar al menos un valor para actualizar"
             )
@@ -89,6 +99,9 @@ class SensorService:
 
         if name is not None:
             sensor.name = self._normalize_name(name)
+
+        if location is not None:
+            sensor.location = self._normalize_location(location)
 
         if is_active is not None:
             sensor.is_active = is_active
@@ -129,6 +142,15 @@ class SensorService:
             raise ValueError("name no puede estar vacío")
 
         return normalized_name
+
+    @staticmethod
+    def _normalize_location(location: str) -> str:
+        normalized_location = location.strip()
+
+        if not normalized_location:
+            raise ValueError("location no puede estar vacío")
+
+        return normalized_location
 
     @staticmethod
     def _validate_type_and_unit(

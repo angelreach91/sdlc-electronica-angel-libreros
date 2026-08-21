@@ -62,6 +62,7 @@ def create_temperature_sensor(service: SensorService) -> Sensor:
         name="Sensor de temperatura",
         sensor_type=SensorType.TEMPERATURE,
         unit=SensorUnit.CELSIUS,
+        location="Laboratorio",
     )
 
 
@@ -75,10 +76,12 @@ def test_create_sensor_stores_normalized_data(
         name=" Sensor exterior ",
         sensor_type=SensorType.TEMPERATURE,
         unit=SensorUnit.CELSIUS,
+        location=" Exterior ",
     )
 
     assert sensor.id == "TEMP-01"
     assert sensor.name == "Sensor exterior"
+    assert sensor.location == "Exterior"
     assert sensor.sensor_type == "temperature"
     assert sensor.unit == "C"
     assert sensor.is_active is True
@@ -93,6 +96,46 @@ def test_create_sensor_has_no_threshold_by_default(
     sensor = create_temperature_sensor(service)
 
     assert sensor.threshold is None
+
+
+def test_create_sensor_stores_location_and_threshold(
+    context: TestContext,
+) -> None:
+    service, repository = context
+
+    sensor = service.create_sensor(
+        sensor_id="TEMP-02",
+        name="Sensor laboratorio",
+        sensor_type=SensorType.TEMPERATURE,
+        unit=SensorUnit.CELSIUS,
+        location=" Laboratorio 1 ",
+        threshold=30.5,
+    )
+
+    assert sensor.location == "Laboratorio 1"
+    assert sensor.threshold == 30.5
+    assert repository.sensors == {"TEMP-02": sensor}
+
+
+def test_create_sensor_rejects_empty_location(
+    context: TestContext,
+) -> None:
+    service, repository = context
+
+    with pytest.raises(
+        ValueError,
+        match="location no puede estar vacío",
+    ):
+        service.create_sensor(
+            sensor_id="TEMP-02",
+            name="Sensor laboratorio",
+            sensor_type=SensorType.TEMPERATURE,
+            unit=SensorUnit.CELSIUS,
+            location=" ",
+            threshold=30.5,
+        )
+
+    assert repository.sensors == {}
 
 
 def test_create_sensor_rejects_duplicate_id(
@@ -131,6 +174,7 @@ def test_create_sensor_rejects_incompatible_unit(
             name="Sensor inválido",
             sensor_type=sensor_type,
             unit=unit,
+            location="Laboratorio",
         )
 
     assert repository.sensors == {}
@@ -144,6 +188,7 @@ def test_list_sensors_delegates_pagination(
     first = Sensor(
         id="HUM-01",
         name="Sensor de humedad",
+        location="Bodega",
         sensor_type="humidity",
         unit="%",
         is_active=True,
@@ -151,6 +196,7 @@ def test_list_sensors_delegates_pagination(
     second = Sensor(
         id="TEMP-01",
         name="Sensor de temperatura",
+        location="Laboratorio",
         sensor_type="temperature",
         unit="C",
         is_active=True,
@@ -201,6 +247,31 @@ def test_update_sensor_changes_fields_and_persists(
     assert sensor.sensor_type == "temperature"
     assert sensor.unit == "C"
     assert sensor.is_active is False
+    assert repository.update_calls == [sensor]
+
+
+def test_update_sensor_changes_location_and_persists(
+    context: TestContext,
+) -> None:
+    service, repository = context
+
+    sensor = Sensor(
+        id="TEMP-01",
+        name="Sensor de temperatura",
+        location="Laboratorio",
+        sensor_type="temperature",
+        unit="C",
+        is_active=True,
+    )
+    repository.sensors[sensor.id] = sensor
+
+    updated = service.update_sensor(
+        sensor.id,
+        location=" Sala de máquinas ",
+    )
+
+    assert updated is sensor
+    assert sensor.location == "Sala de máquinas"
     assert repository.update_calls == [sensor]
 
 

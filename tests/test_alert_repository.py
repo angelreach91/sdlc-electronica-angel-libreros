@@ -33,6 +33,7 @@ def add_sensor_and_reading(
         Sensor(
             id=sensor_id,
             name=f"Sensor {sensor_id}",
+            location="Laboratorio",
             sensor_type="temperature",
             unit="C",
             is_active=True,

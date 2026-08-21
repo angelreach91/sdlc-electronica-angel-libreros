@@ -17,6 +17,10 @@ class Sensor(Base):
         String(100),
         nullable=False,
     )
+    location: Mapped[str] = mapped_column(
+        String(150),
+        nullable=False,
+    )
     sensor_type: Mapped[str] = mapped_column(
         String(30),
         nullable=False,
@@ -40,6 +44,7 @@ class Sensor(Base):
             "Sensor("
             f"id={self.id!r}, "
             f"name={self.name!r}, "
+            f"location={self.location!r}, "
             f"sensor_type={self.sensor_type!r}, "
             f"unit={self.unit!r}, "
             f"is_active={self.is_active!r}"

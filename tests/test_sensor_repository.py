@@ -30,6 +30,7 @@ def make_sensor(
     return Sensor(
         id=sensor_id,
         name=name,
+        location="Laboratorio",
         sensor_type="temperature",
         unit="C",
         is_active=True,
