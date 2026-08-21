@@ -57,6 +57,7 @@ def test_create_and_query_reading_with_sqlite(
         json={
             "id": "TEMP-01",
             "name": "Sensor exterior",
+            "location": "Exterior",
             "sensor_type": "temperature",
             "unit": "C",
         },
@@ -66,6 +67,7 @@ def test_create_and_query_reading_with_sqlite(
     assert sensor_response.json() == {
         "id": "TEMP-01",
         "name": "Sensor exterior",
+        "location": "Exterior",
         "sensor_type": "temperature",
         "unit": "C",
         "is_active": True,
@@ -125,6 +127,7 @@ def test_update_delete_and_deactivate_with_sqlite(
         json={
             "id": "TEMP-01",
             "name": "Sensor exterior",
+            "location": "Exterior",
             "sensor_type": "temperature",
             "unit": "C",
         },
@@ -217,6 +220,7 @@ def test_configure_threshold_detect_and_query_alert_with_sqlite(
         json={
             "id": "TEMP-01",
             "name": "Sensor exterior",
+            "location": "Exterior",
             "sensor_type": "temperature",
             "unit": "C",
         },

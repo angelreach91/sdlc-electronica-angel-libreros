@@ -35,6 +35,7 @@ def add_sensor(
         Sensor(
             id=sensor_id,
             name=f"Sensor {sensor_id}",
+            location="Laboratorio",
             sensor_type=sensor_type,
             unit=unit,
             is_active=True,

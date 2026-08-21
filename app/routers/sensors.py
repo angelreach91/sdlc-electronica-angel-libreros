@@ -67,6 +67,8 @@ def create_sensor(
             name=sensor_data.name,
             sensor_type=sensor_data.sensor_type,
             unit=sensor_data.unit,
+            location=sensor_data.location,
+            threshold=sensor_data.threshold,
         )
     except SensorAlreadyExistsError as error:
         raise _conflict(error) from error
@@ -137,6 +139,7 @@ def update_sensor(
         sensor = service.update_sensor(
             sensor_id,
             name=sensor_data.name,
+            location=sensor_data.location,
             is_active=sensor_data.is_active,
             threshold=sensor_data.threshold,
         )

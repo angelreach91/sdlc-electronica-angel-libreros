@@ -154,6 +154,7 @@ def context() -> TestContext:
         Sensor(
             id="TEMP-01",
             name="Sensor de temperatura",
+            location="Laboratorio",
             sensor_type="temperature",
             unit="C",
             is_active=True,
@@ -163,6 +164,7 @@ def context() -> TestContext:
         Sensor(
             id="HUM-01",
             name="Sensor de humedad",
+            location="Bodega",
             sensor_type="humidity",
             unit="%",
             is_active=True,
