@@ -1,4 +1,5 @@
 from collections.abc import Generator
+from datetime import datetime, timedelta
 from pathlib import Path
 
 import pytest
@@ -115,6 +116,130 @@ def test_create_and_query_reading_with_sqlite(
     assert get_response.json()["id"] == reading_id
     assert get_response.json()["sensor_id"] == "TEMP-01"
     assert get_response.json()["unit"] == "C"
+
+
+def test_list_readings_applies_pagination_with_sqlite(
+    client: TestClient,
+) -> None:
+    """Comprueba la paginación contra la persistencia real."""
+
+    sensor_response = client.post(
+        "/sensors",
+        json={
+            "id": "TEMP-PAGE",
+            "name": "Sensor de paginación",
+            "location": "Laboratorio",
+            "sensor_type": "temperature",
+            "unit": "C",
+        },
+    )
+
+    assert sensor_response.status_code == 201
+
+    reading_responses = [
+        client.post(
+            "/sensors/TEMP-PAGE/readings",
+            json={
+                "value": value,
+                "unit": "C",
+            },
+        )
+        for value in (21.0, 22.0, 23.0)
+    ]
+
+    assert all(
+        response.status_code == 201
+        for response in reading_responses
+    )
+
+    second_reading = reading_responses[1].json()
+    list_response = client.get(
+        "/sensors/TEMP-PAGE/readings",
+        params={
+            "limit": 1,
+            "offset": 1,
+        },
+    )
+
+    assert list_response.status_code == 200
+    assert list_response.json() == [second_reading]
+    assert list_response.json()[0]["sensor_id"] == "TEMP-PAGE"
+
+
+def test_list_readings_applies_to_filter_with_sqlite(
+    client: TestClient,
+) -> None:
+    """Comprueba que el filtro final excluye lecturas posteriores."""
+
+    sensor_response = client.post(
+        "/sensors",
+        json={
+            "id": "TEMP-TIME",
+            "name": "Sensor temporal",
+            "location": "Laboratorio",
+            "sensor_type": "temperature",
+            "unit": "C",
+        },
+    )
+
+    assert sensor_response.status_code == 201
+
+    reading_response = client.post(
+        "/sensors/TEMP-TIME/readings",
+        json={
+            "value": 24.5,
+            "unit": "C",
+        },
+    )
+
+    assert reading_response.status_code == 201
+
+    received_at = datetime.fromisoformat(
+        reading_response.json()["received_at"]
+    )
+    immediately_before = received_at - timedelta(microseconds=1)
+
+    list_response = client.get(
+        "/sensors/TEMP-TIME/readings",
+        params={
+            "to": immediately_before.isoformat(),
+        },
+    )
+
+    assert list_response.status_code == 200
+    assert list_response.json() == []
+
+
+def test_list_readings_rejects_invalid_date_range_with_sqlite(
+    client: TestClient,
+) -> None:
+    """Comprueba el error controlado para un rango temporal inválido."""
+
+    sensor_response = client.post(
+        "/sensors",
+        json={
+            "id": "TEMP-RANGE",
+            "name": "Sensor de rango",
+            "location": "Laboratorio",
+            "sensor_type": "temperature",
+            "unit": "C",
+        },
+    )
+
+    assert sensor_response.status_code == 201
+
+    list_response = client.get(
+        "/sensors/TEMP-RANGE/readings",
+        params={
+            "from": "2026-08-21T12:00:00+00:00",
+            "to": "2026-08-21T11:59:59+00:00",
+        },
+    )
+
+    assert list_response.status_code == 400
+    assert list_response.json() == {
+        "detail": "from_date no puede ser posterior a to_date"
+    }
 
 
 def test_update_delete_and_deactivate_with_sqlite(
