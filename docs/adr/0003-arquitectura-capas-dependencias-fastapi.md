@@ -3,29 +3,32 @@
 - Estado: Aceptado
 - Fecha: 2026-07-30
 - Actualizado: 2026-07-31
+- Revisado: 2026-08-21
 
 ## Contexto
 
 SensorHub comenzó como una aplicación sencilla de FastAPI con los esquemas y endpoints definidos directamente en `app/main.py`.
 
-Posteriormente se incorporaron persistencia con SQLite, modelos ORM de SQLAlchemy, repositorios y servicios. Para conectar estos componentes con la API era necesario evitar que los routers administraran sesiones, ejecutaran consultas SQL o concentraran reglas de negocio.
+Posteriormente se incorporaron persistencia con SQLite, modelos ORM de SQLAlchemy, repositorios y servicios. Para conectar estos componentes con la API era necesario evitar que los routers administraran sesiones, ejecutaran consultas SQL o concentraran reglas de negocio. En el estado final, la misma separación admite PostgreSQL 16 y SQLite mediante la configuración de `DATABASE_URL`.
 
-La aplicación también debía ofrecer operaciones CRUD para sensores y lecturas, paginación, filtros por fecha, validación física y documentación automática mediante Swagger.
+La aplicación también debía ofrecer operaciones CRUD para sensores y lecturas, paginación, filtros por fecha, validación física y documentación automática mediante Swagger. Después se incorporaron alertas, estadísticas por sensor, observabilidad, configuración por entorno y manejo global de errores sin abandonar la arquitectura elegida.
 
 ## Decisión
 
-Se utilizará una arquitectura organizada en cuatro capas principales:
+Se utilizará una arquitectura en capas cuyo flujo de dependencias principal es:
 
 ```text
 Router
   ↓
 Service
   ↓
-Repository
+Repository Protocol
+  ↓
+SQLAlchemy Repository
   ↓
 Model
   ↓
-SQLite
+Database (PostgreSQL o SQLite)
 ```
 
 Las capas se conectan mediante inyección de dependencias.
@@ -35,8 +38,10 @@ La estructura principal es:
 ```text
 app/
 ├── main.py
+├── config.py
 ├── db.py
 ├── dependencies.py
+├── observability.py
 ├── sensor_types.py
 ├── models/
 ├── repositories/
@@ -55,16 +60,18 @@ Sus responsabilidades son:
 
 - recibir parámetros de ruta, consulta y cuerpos JSON;
 - delegar las operaciones en los servicios;
-- transformar errores conocidos en respuestas HTTP;
 - devolver los códigos de estado correspondientes;
 - utilizar esquemas Pydantic para documentar entradas y salidas.
+
+Los errores compartidos no se traducen principalmente mediante bloques `try/except` repetidos. Los exception handlers globales convierten `ValueError`, `LookupError`, `SensorAlreadyExistsError`, `SQLAlchemyError` y excepciones inesperadas en respuestas HTTP consistentes. Un router puede conservar una decisión HTTP local, por ejemplo devolver `404` cuando un servicio retorna `None`.
 
 Los routers no realizan consultas SQL ni contienen las reglas físicas del sistema.
 
 Las rutas se encuentran separadas en:
 
 - `app/routers/sensors.py`;
-- `app/routers/readings.py`.
+- `app/routers/readings.py`;
+- `app/routers/alerts.py`.
 
 ### Services
 
@@ -87,7 +94,12 @@ Los servicios contienen las reglas de negocio y coordinan las operaciones.
 - rechazar temperaturas inferiores a `-273.15 °C`;
 - validar humedades entre `0 %` y `100 %`;
 - coordinar la creación, consulta, actualización y eliminación;
-- validar la paginación y los rangos de fechas.
+- validar la paginación y los rangos de fechas;
+- solicitar estadísticas por sensor y período sin cargar todas las lecturas en Python.
+
+`AnomalyService` evalúa cada lectura almacenada y genera una alerta cuando `value > threshold`; además delega la notificación en una estrategia intercambiable.
+
+`AlertService` se encarga de consultar alertas, validar filtros y paginación, listar alertas activas y aplicar únicamente las transiciones `open -> acknowledged` y `acknowledged -> resolved`.
 
 Los servicios no dependen de FastAPI ni ejecutan consultas SQL directamente.
 
@@ -103,25 +115,30 @@ Sus responsabilidades son:
 - aplicar paginación y filtros;
 - ejecutar `commit()`, `refresh()` y `rollback()` cuando corresponde.
 
-Los contratos `SensorRepository` y `ReadingRepository` se definen mediante `Protocol`.
+Los contratos de repositorio se definen mediante `Protocol`, incluidos `SensorRepository`, `SensorLookupRepository`, `ReadingRepository`, `AlertRepository` y los contratos mínimos consumidos por los servicios.
 
 Las implementaciones utilizadas por la aplicación son:
 
 - `SQLAlchemySensorRepository`;
-- `SQLAlchemyReadingRepository`.
+- `SQLAlchemyReadingRepository`;
+- `SQLAlchemyAlertRepository`.
+
+Las estadísticas `MIN`, `MAX` y `AVG` se calculan en `SQLAlchemyReadingRepository` mediante agregaciones SQL.
 
 Los repositorios no contienen reglas físicas ni producen respuestas HTTP.
 
 ### Models
 
-Los modelos ORM representan las tablas de SQLite mediante la API tipada de SQLAlchemy 2.x.
+Los modelos ORM representan las tablas de PostgreSQL o SQLite mediante la API tipada de SQLAlchemy 2.x.
 
 La tabla `sensors` almacena:
 
 - `id`;
 - `name`;
+- `location`;
 - `sensor_type`;
 - `unit`;
+- `threshold`;
 - `is_active`.
 
 La tabla `readings` almacena:
@@ -134,6 +151,8 @@ La tabla `readings` almacena:
 
 `readings.sensor_id` declara una clave foránea hacia `sensors.id`.
 
+La tabla `alerts` almacena la lectura que originó la alerta, el valor, el umbral, la fecha de creación y su `status`.
+
 ### Schemas
 
 Los esquemas Pydantic representan los contratos de entrada y salida de la API.
@@ -143,7 +162,8 @@ Se mantienen separados de los modelos ORM para evitar que la estructura HTTP dep
 Los esquemas se encuentran en:
 
 - `app/schemas/sensor.py`;
-- `app/schemas/reading.py`.
+- `app/schemas/reading.py`;
+- `app/schemas/alert.py`.
 
 ## Inyección de dependencias
 
@@ -177,7 +197,17 @@ Session
 Session
 → SQLAlchemyReadingRepository
 → SQLAlchemySensorRepository
+→ SQLAlchemyAlertRepository
+→ AnomalyService
 → ReadingService
+```
+
+`get_alert_service()` construye:
+
+```text
+Session
+→ SQLAlchemyAlertRepository
+→ AlertService
 ```
 
 Esta estructura permite que los routers reciban servicios ya construidos sin conocer cómo se crea la sesión o qué repositorio concreto se utiliza.
@@ -191,9 +221,10 @@ Cliente HTTP
 → Router de lecturas
 → Esquema Pydantic
 → ReadingService
-→ Repositorios
+→ Repository Protocols
+→ Repositorios SQLAlchemy
 → Modelos SQLAlchemy
-→ SQLite
+→ PostgreSQL o SQLite
 → Esquema de respuesta
 → Cliente HTTP
 ```
@@ -226,6 +257,24 @@ La arquitectura permite utilizar diferentes tipos de prueba:
 Los servicios se prueban sin FastAPI ni SQLite mediante implementaciones falsas que registran las llamadas realizadas a los repositorios.
 
 Las pruebas de integración sustituyen únicamente `get_session`, por lo que utilizan routers, servicios, repositorios, modelos y SQLite reales.
+
+## Configuración, observabilidad y errores
+
+`app/config.py` obtiene mediante variables de entorno el nombre, la versión y el nivel de logging de la aplicación. `app/db.py` obtiene `DATABASE_URL` y normaliza las URL de PostgreSQL para utilizar el driver configurado.
+
+`app/observability.py` aporta:
+
+- middleware para registrar solicitudes y errores;
+- `MetricsCollector` para `requests_total`, `errors_total` y `uptime_seconds`;
+- logging JSON estructurado.
+
+`app/main.py` conecta el middleware, expone `GET /health` y `GET /metrics`, e instala handlers globales con estas traducciones:
+
+- `ValueError` → `400`;
+- `LookupError` → `404`;
+- `SensorAlreadyExistsError` → `409`;
+- `SQLAlchemyError` → `503`;
+- `Exception` → `500`.
 
 ## Alternativas consideradas
 
@@ -263,10 +312,12 @@ Fue adecuado para la primera versión, pero dejó de ser conveniente al crecer e
 - La solución utiliza más archivos y clases que una aplicación monolítica pequeña.
 - Es necesario mantener contratos consistentes entre servicios y repositorios.
 - Algunos cambios requieren actualizar varias capas.
-- Los errores de negocio todavía se representan principalmente mediante `ValueError` y `LookupError`.
+- Los contratos entre capas, la configuración y los handlers globales requieren mantenerse coordinados al incorporar nuevos casos de negocio.
 
 ## Resultado
 
-La arquitectura permite administrar sensores y lecturas mediante una API REST sin mezclar las reglas del dominio con FastAPI o SQLAlchemy.
+La arquitectura permite administrar sensores, lecturas y alertas, además de consultar estadísticas y métricas, sin mezclar las reglas del dominio con FastAPI o SQLAlchemy.
 
-El flujo completo fue verificado mediante pruebas automatizadas, SQLite temporal y una validación manual desde Swagger.
+La decisión de capas se conserva en el estado final: los servicios dependen de Repository Protocols, las implementaciones SQLAlchemy encapsulan PostgreSQL o SQLite y FastAPI compone las dependencias. El manejo global de errores y la observabilidad son responsabilidades transversales conectadas en la aplicación, no lógica repetida dentro de cada router.
+
+El flujo completo fue verificado mediante pruebas automatizadas, SQLite temporal, PostgreSQL 16 y validaciones manuales de la API desplegada.

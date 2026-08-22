@@ -4243,3 +4243,257 @@ Alembic: 41665aba7dee (head)
 ```
 
 La implementación final cumple el comportamiento definido por las pruebas y conserva la separación existente entre modelos, repositorios, servicios, schemas, routers y dependencias.
+
+## Semana 6 — Proyecto final SensorHub
+
+**1. Planificación del proyecto final**
+
+### Objetivo
+
+Auditar el estado de SensorHub frente a RF-1 a RF-7 y los requisitos no funcionales del proyecto final.
+
+### Herramienta utilizada
+
+`ChatGPT` y `Codex`.
+
+### Prompt o instrucción principal
+
+Revisar el repositorio contra los requisitos finales, identificar brechas reales y proponer un plan de trabajo verificable.
+
+### Propuesta de la IA
+
+La IA propuso organizar la auditoría por requisito funcional y no funcional, relacionar cada hallazgo con evidencia del código y convertir las brechas confirmadas en issues independientes.
+
+### Decisión / revisión humana
+
+Se decidió priorizar el estándar esperado, no realizar el track de alto potencial, trabajar mediante issues y ramas, y no reescribir funcionalidades que ya estuvieran correctas.
+
+### Resultado
+
+Se definió una secuencia incremental de trabajo para completar y validar SensorHub sin ampliar innecesariamente el alcance.
+
+---
+
+**2. RF-1 — Sensores**
+
+### Objetivo
+
+Completar la gestión de sensores de acuerdo con RF-1 y comprobar la desactivación lógica.
+
+### Herramienta utilizada
+
+`Codex`.
+
+### Prompt o instrucción principal
+
+Auditar el modelo, la API y las pruebas de sensores, e identificar únicamente los campos y comportamientos faltantes.
+
+### Propuesta de la IA
+
+La IA detectó que faltaba `location` en el modelo y la API, y que
+`threshold` todavía no se aceptaba al crear sensores. Propuso ampliar los
+contratos y añadir una migración versionada para `location`.
+
+### Decisión / revisión humana
+
+Se exigió una secuencia TDD RED/GREEN, una migración segura y validación posterior en WSL, PostgreSQL y mediante solicitudes `curl` reales.
+
+### Resultado
+
+La etapa terminó con 92 pruebas y 91.86 % de cobertura. Se comprobaron `location`, `threshold` y el soft delete realizado mediante desactivación lógica.
+
+---
+
+**3. RF-2/RF-3 — Lecturas**
+
+### Objetivo
+
+Verificar el registro y la consulta de lecturas, incluida la paginación y los filtros temporales.
+
+### Herramienta utilizada
+
+`Codex`.
+
+### Prompt o instrucción principal
+
+Contrastar RF-2 y RF-3 con la implementación existente y señalar solamente brechas demostrables.
+
+### Propuesta de la IA
+
+La auditoría mostró que el código de producción ya cumplía los comportamientos requeridos. Se propuso reforzar su evidencia mediante pruebas de integración.
+
+### Decisión / revisión humana
+
+Se decidió no reescribir producción y agregar únicamente evidencia para paginación, filtros `from`/`to` y rechazo de un rango inválido.
+
+### Resultado
+
+La validación produjo 95 pruebas y 92.35 % de cobertura, sin cambios innecesarios en la funcionalidad existente.
+
+---
+
+**4. RF-4/RF-5 — Alertas**
+
+### Objetivo
+
+Completar el ciclo de vida de las alertas generadas cuando una lectura supera el umbral del sensor.
+
+### Herramienta utilizada
+
+`Codex`.
+
+### Prompt o instrucción principal
+
+Auditar las alertas existentes y proponer estados y transiciones compatibles con RF-4 y RF-5.
+
+### Propuesta de la IA
+
+La IA propuso incorporar estados persistentes para las alertas y una migración que actualizara los registros existentes.
+
+### Decisión / revisión humana
+
+Se aceptó únicamente el flujo secuencial `open -> acknowledged -> resolved`; se rechazó `open -> resolved`. La migración debía realizar backfill con `open`.
+
+### Resultado
+
+La etapa terminó con 120 pruebas, 92.31 % de cobertura y un smoke test real del flujo de alertas.
+
+---
+
+**5. RF-6 — Estadísticas**
+
+### Objetivo
+
+Incorporar estadísticas de lecturas por sensor y período.
+
+### Herramienta utilizada
+
+`Codex`.
+
+### Prompt o instrucción principal
+
+Implementar y verificar los valores mínimo, máximo y promedio respetando la arquitectura de repositorios.
+
+### Propuesta de la IA
+
+La IA propuso delegar el cálculo en la capa de persistencia y exponer el resultado mediante el servicio y la API.
+
+### Decisión / revisión humana
+
+Se decidió calcular `MIN`, `MAX` y `AVG` mediante agregaciones SQL, sin cargar todas las lecturas en Python.
+
+### Resultado
+
+Un smoke test con los valores 20, 25 y 30 devolvió `minimum = 20`, `maximum = 30` y `average = 25`. La validación produjo 136 pruebas y 92.66 % de cobertura.
+
+---
+
+**6. RF-7/RNF-5 — Observabilidad**
+
+### Objetivo
+
+Completar health check, métricas, logging estructurado, configuración y manejo global de errores.
+
+### Herramienta utilizada
+
+`Codex`.
+
+### Prompt o instrucción principal
+
+Proponer observabilidad básica verificable para la API sin introducir servicios externos innecesarios.
+
+### Propuesta de la IA
+
+La IA propuso `MetricsCollector`, middleware HTTP, logging JSON, exception handlers globales y configuración mediante variables de entorno.
+
+### Decisión / revisión humana
+
+Durante la validación se interpretó inicialmente de forma incorrecta `errors_total`. Al revisar la secuencia completa se comprobó que la implementación era correcta y se decidió no modificar código que ya funcionaba.
+
+### Resultado
+
+Después de respuestas 404, 400 y 409, las métricas mostraron `requests_total = 6` y `errors_total = 3`. Los logs JSON y las métricas se comprobaron manualmente; la etapa terminó con 147 pruebas y 95.48 % de cobertura.
+
+---
+
+**7. Auditoría RNF-2**
+
+### Objetivo
+
+Comprobar la calidad automatizada del proyecto final.
+
+### Herramienta utilizada
+
+`Codex`.
+
+### Prompt o instrucción principal
+
+Auditar cobertura, pruebas unitarias, pruebas de integración y CI contra los criterios del proyecto.
+
+### Propuesta de la IA
+
+La IA relacionó los controles existentes con RNF-2 y revisó si había brechas de cobertura o tipos de prueba.
+
+### Decisión / revisión humana
+
+Se decidió no agregar pruebas artificiales únicamente para aumentar el porcentaje de cobertura.
+
+### Resultado
+
+La auditoría confirmó 147 pruebas y 95.48 % de cobertura frente al mínimo requerido de 80 %. No se hicieron cambios.
+
+---
+
+**8. Auditoría RNF-3/RNF-4**
+
+### Objetivo
+
+Verificar la automatización, contenerización, persistencia y despliegue de SensorHub.
+
+### Herramienta utilizada
+
+`Codex`.
+
+### Prompt o instrucción principal
+
+Auditar GitHub Actions, Docker, Docker Compose, PostgreSQL, Alembic y Render contra los requisitos no funcionales.
+
+### Propuesta de la IA
+
+La IA contrastó la configuración versionada y señaló las comprobaciones manuales necesarias para completar la evidencia de producción.
+
+### Decisión / revisión humana
+
+Se confirmó que los componentes cumplían técnicamente y se decidió no crear infraestructura adicional innecesaria. En Render se revisaron el repositorio, la rama `main`, Auto-Deploy y el estado del despliegue.
+
+### Resultado
+
+La validación equivalente a CI con Docker y Python 3.12 produjo 147 pruebas y 95.69 % de cobertura. Alembic conservó un único head, `b7f2c8d91e34`. El despliegue quedó live y se verificaron manualmente `/health`, `/metrics` y `/docs`, todos con respuesta 200.
+
+---
+
+**9. Consolidación documental**
+
+### Objetivo
+
+Actualizar la documentación final para que describa fielmente el estado alcanzado por SensorHub.
+
+### Herramienta utilizada
+
+`Codex`.
+
+### Prompt o instrucción principal
+
+Revisar los ADR y la bitácora de IA sin borrar su contexto histórico ni documentar funcionalidades no comprobadas.
+
+### Propuesta de la IA
+
+Codex propuso distinguir explícitamente las decisiones originales de su evolución y del estado final, y corregir referencias que habían quedado obsoletas.
+
+### Decisión / revisión humana
+
+La documentación se contrastó contra el código real, las pruebas, Docker, PostgreSQL, Alembic, CI, Render y los smoke tests antes de aceptar los cambios. Las propuestas de la IA se trataron como borradores sujetos a revisión.
+
+### Resultado
+
+Los ADR registran la persistencia final, la arquitectura ampliada y la continuidad del monolito modular. Esta bitácora conserva las semanas anteriores y deja explícito que la IA realizó propuestas, pero las decisiones finales fueron revisadas antes de aceptarse.
