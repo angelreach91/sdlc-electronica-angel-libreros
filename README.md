@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/angelreach91/sdlc-electronica-angel-libreros/actions/workflows/ci.yml/badge.svg)](https://github.com/angelreach91/sdlc-electronica-angel-libreros/actions/workflows/ci.yml)
 
-SensorHub es una API REST de telemetría IoT desarrollada con FastAPI. Permite administrar sensores y lecturas, detectar anomalías, gestionar alertas, calcular estadísticas y consultar métricas básicas de observabilidad.
+SensorHub es una API REST desarrollada con FastAPI. Permite administrar sensores y lecturas, detectar anomalías, gestionar alertas, calcular estadísticas y consultar métricas básicas de observabilidad.
 
 ## Funcionalidades
 
