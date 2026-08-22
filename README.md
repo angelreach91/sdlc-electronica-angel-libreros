@@ -2,609 +2,320 @@
 
 [![CI](https://github.com/angelreach91/sdlc-electronica-angel-libreros/actions/workflows/ci.yml/badge.svg)](https://github.com/angelreach91/sdlc-electronica-angel-libreros/actions/workflows/ci.yml)
 
-SensorHub es una API REST desarrollada con FastAPI para administrar sensores y sus lecturas.
+SensorHub es una API REST de telemetría IoT desarrollada con FastAPI. Permite administrar sensores y lecturas, detectar anomalías, gestionar alertas, calcular estadísticas y consultar métricas básicas de observabilidad.
 
-El proyecto utiliza una arquitectura en cuatro capas, persistencia con SQLAlchemy 2.x, validación mediante Pydantic, migraciones con Alembic, documentación automática con Swagger y pruebas automatizadas con Pytest.
-
-La aplicación utiliza SQLite de manera predeterminada para la ejecución local y puede conectarse a PostgreSQL mediante la variable de entorno `DATABASE_URL`. También puede ejecutarse dentro de contenedores mediante Docker y Docker Compose.
-
-Este repositorio conserva los ejercicios realizados durante las semanas anteriores del curso como material histórico.
-
-
-## Despliegue en producción
-
-SensorHub se encuentra desplegado públicamente en Render:
-
-```text
-https://sensorhub-api-8yfj.onrender.com
-```
-
-El estado del servicio puede comprobarse en:
-
-```text
-https://sensorhub-api-8yfj.onrender.com/health
-```
-
-La documentación Swagger está disponible en:
-
-```text
-https://sensorhub-api-8yfj.onrender.com/docs
-```
 ## Funcionalidades
 
-SensorHub permite:
-
-- registrar sensores de temperatura y humedad;
-- consultar sensores existentes;
-- actualizar parcialmente el nombre y el estado de un sensor;
-- desactivar sensores sin eliminarlos físicamente;
-- registrar lecturas asociadas a un sensor;
-- consultar lecturas mediante identificador;
-- listar lecturas con paginación;
-- filtrar lecturas por rango de fechas;
-- actualizar lecturas;
-- eliminar lecturas;
-- rechazar datos que no respeten las reglas físicas definidas;
-- impedir que el tipo y la unidad de un sensor cambien después de su creación;
-- responder con `409 Conflict` cuando se intenta registrar un identificador existente.
-
-## Tipos de sensor
-
-### Temperatura
-
-- Tipo: `temperature`
-- Unidad válida: `C`
-- Valor mínimo: `-273.15`
-
-### Humedad
-
-- Tipo: `humidity`
-- Unidad válida: `%`
-- Intervalo permitido: `0` a `100`
-
-La API también rechaza lecturas cuando:
-
-- el sensor no existe;
-- el sensor está desactivado;
-- la unidad no corresponde al tipo de sensor;
-- el valor se encuentra fuera del rango físico permitido.
+- **RF-1 — Sensores:** crea, consulta y actualiza sensores con `id`, `name`, `location`, `sensor_type`, `unit`, `threshold` e `is_active`. La eliminación es una desactivación lógica.
+- **RF-2 — Registro de lecturas:** comprueba que el sensor exista y esté activo, valida la unidad y los límites físicos, y almacena `received_at`.
+- **RF-3 — Consulta de lecturas:** ofrece paginación con `limit` y `offset`, filtros `from` y `to`, y validación del rango temporal.
+- **RF-4 — Detección de anomalías:** genera una alerta cuando una lectura supera el umbral configurado para el sensor.
+- **RF-5 — Alertas:** permite consultar alertas por sensor o activas y avanzar su estado de `open` a `acknowledged` y después a `resolved`.
+- **RF-6 — Estadísticas:** calcula mínimo, máximo y promedio en SQL para un sensor y un período obligatorio.
+- **RF-7 — Observabilidad:** expone el estado del servicio, contadores de solicitudes y errores, tiempo de actividad y logs HTTP estructurados.
 
 ## Arquitectura
 
-La aplicación sigue el siguiente flujo:
+```mermaid
+flowchart TD
+    C[Cliente HTTP] --> M[Middleware]
+    M --> R[FastAPI Routers]
+    R --> S[Services]
+    S --> P[Repository Protocols]
+    P --> Q[SQLAlchemy Repositories]
+    Q --> DB[(SQLite / PostgreSQL)]
 
-```text
-Router
-  ↓
-Service
-  ↓
-Repository
-  ↓
-Model
-  ↓
-SQLite o PostgreSQL
+    D[FastAPI Depends] --> S
+    D --> Q
+
+    M --> O[Métricas y logs]
+    R -. excepciones .-> E[Exception Handlers]
+    S -. excepciones .-> E
 ```
 
-### Routers
+SensorHub se mantiene como un **monolito modular**, con responsabilidades separadas por capas:
 
-Reciben las solicitudes HTTP, delegan las operaciones y generan las respuestas correspondientes.
+- **Router:** capa HTTP que recibe solicitudes y delega cada operación.
+- **Service:** contiene las reglas y la coordinación de negocio.
+- **Repository Protocol:** define los contratos que necesitan los servicios y evita acoplarlos directamente a SQLAlchemy.
+- **SQLAlchemy Repository:** implementa el acceso a los datos.
+- **Database:** utiliza SQLite o PostgreSQL según el entorno.
+- **FastAPI Depends:** construye e inyecta sesiones, repositorios y servicios.
+- **Middleware:** centraliza la observabilidad, las métricas y el logging HTTP.
+- **Exception Handlers:** traducen de forma centralizada los errores de aplicación a respuestas HTTP.
 
-Archivos principales:
+Los manejadores globales aplican este mapeo:
 
-- `app/routers/sensors.py`
-- `app/routers/readings.py`
+| Excepción | HTTP |
+|---|---:|
+| `ValueError` | `400` |
+| `LookupError` | `404` |
+| `SensorAlreadyExistsError` | `409` |
+| `SQLAlchemyError` | `503` |
+| `Exception` | `500` |
 
-### Services
+## Tecnologías
 
-Contienen las reglas de negocio y coordinan las operaciones.
+| Tecnología | Uso |
+|---|---|
+| FastAPI | API HTTP e inyección de dependencias |
+| Pydantic | Validación y contratos de datos |
+| SQLAlchemy 2.x | ORM, repositorios y agregaciones SQL |
+| Alembic | Migraciones de base de datos |
+| PostgreSQL 16 | Persistencia en Docker Compose y Render |
+| SQLite | Persistencia local predeterminada y pruebas |
+| Pytest | Pruebas y cobertura |
+| Ruff | Análisis estático y estilo |
+| Mypy | Comprobación de tipos |
+| Docker | Imagen de la aplicación con Python 3.12 |
+| Docker Compose | Orquestación local de API y PostgreSQL |
+| GitHub Actions | Integración continua |
+| Render | Despliegue de la API y PostgreSQL administrado |
 
-Archivos principales:
-
-- `app/services/sensor_service.py`
-- `app/services/reading_service.py`
-
-### Repositories
-
-Administran el acceso a los datos mediante SQLAlchemy.
-
-Archivos principales:
-
-- `app/repositories/sensor_repository.py`
-- `app/repositories/reading_repository.py`
-
-### Models
-
-Representan las tablas de la base de datos mediante la API tipada de SQLAlchemy 2.x.
-
-Archivos principales:
-
-- `app/models/sensor.py`
-- `app/models/reading.py`
-
-### Schemas
-
-Definen los contratos de entrada y salida mediante Pydantic.
-
-Archivos principales:
-
-- `app/schemas/sensor.py`
-- `app/schemas/reading.py`
-
-## Estructura principal
+## Estructura del proyecto
 
 ```text
 app/
 ├── main.py
+├── config.py
 ├── db.py
+├── observability.py
+├── alert_status.py
 ├── dependencies.py
 ├── exceptions.py
-├── sensor_types.py
-├── models/
-├── repositories/
 ├── routers/
-├── schemas/
-└── services/
+├── services/
+├── repositories/
+├── models/
+└── schemas/
 
 migrations/
-├── versions/
-├── env.py
-└── script.py.mako
-
 tests/
 docs/adr/
-semana1/
-semana2/
+.github/workflows/ci.yml
 AI_LOG.md
-README.md
 Dockerfile
 docker-compose.yml
-.env.example
-alembic.ini
-requirements.txt
-pyproject.toml
+render.yaml
+README.md
 ```
 
-## Instalación local
-
-Desde la raíz del repositorio, crea un entorno virtual:
-
-```bash
-python -m venv .venv
-```
-
-En Linux o WSL, actívalo con:
-
-```bash
-source .venv/bin/activate
-```
-
-Instala las dependencias:
-
-```bash
-python -m pip install -r requirements.txt
-```
-
-## Configuración de la base de datos
-
-SensorHub obtiene la conexión mediante la variable de entorno:
-
-```text
-DATABASE_URL
-```
-
-Si la variable no está definida, la aplicación utiliza SQLite:
-
-```text
-sqlite:///./sensorhub.db
-```
-
-Por tanto, la ejecución local puede utilizar `sensorhub.db` sin configuración adicional.
-
-Para PostgreSQL puede utilizarse una dirección con esta estructura:
-
-```text
-postgresql+psycopg://usuario:contraseña@host:5432/base_de_datos
-```
-
-La aplicación también normaliza direcciones que comienzan con:
-
-```text
-postgres://
-postgresql://
-```
-
-para utilizar el controlador `psycopg`.
-
-## Migraciones con Alembic
-
-La estructura de la base de datos se administra mediante migraciones de Alembic.
-
-Para aplicar todas las migraciones pendientes:
-
-```bash
-python -m alembic upgrade head
-```
-
-Para consultar la migración actualmente aplicada:
-
-```bash
-python -m alembic current
-```
-
-Para consultar el historial disponible:
-
-```bash
-python -m alembic history
-```
-
-La migración inicial crea:
-
-- la tabla `sensors`;
-- la tabla `readings`;
-- la relación entre lecturas y sensores;
-- el índice de `sensor_id`;
-- la tabla interna `alembic_version`.
-
-Los archivos de migración se encuentran en:
-
-```text
-migrations/versions/
-```
-
-## Ejecución local de la API
-
-Primero aplica las migraciones:
-
-```bash
-python -m alembic upgrade head
-```
-
-Después inicia la API:
-
-```bash
-python -m uvicorn app.main:app --reload
-```
-
-La API estará disponible en:
-
-```text
-http://127.0.0.1:8000
-```
-
-La documentación Swagger estará disponible en:
-
-```text
-http://127.0.0.1:8000/docs
-```
-
-El estado del servicio puede comprobarse en:
-
-```text
-http://127.0.0.1:8000/health
-```
-
-## Ejecución con Docker
-
-El `Dockerfile` utiliza:
-
-```text
-python:3.12-slim
-```
-
-La imagen instala las dependencias, copia la aplicación y las migraciones, aplica `alembic upgrade head` e inicia Uvicorn en el puerto 8000.
-
-Construye la imagen con:
-
-```bash
-docker build -t sensorhub:dev .
-```
-
-Ejecuta un contenedor con SQLite mediante:
-
-```bash
-docker run --rm \
-  -p 127.0.0.1:8000:8000 \
-  sensorhub:dev
-```
-
-## Ejecución con Docker Compose y PostgreSQL
-
-Docker Compose levanta dos servicios:
-
-```text
-api
-db
-```
-
-El servicio `api` ejecuta SensorHub y el servicio `db` ejecuta PostgreSQL 16.
-
-### Preparar las variables locales
-
-Copia el archivo de ejemplo:
-
-```bash
-cp .env.example .env
-```
-
-Después modifica la contraseña dentro de `.env`.
-
-Ejemplo:
-
-```text
-POSTGRES_USER=sensor
-POSTGRES_PASSWORD=contraseña-local
-POSTGRES_DB=sensorhub
-```
-
-El archivo `.env` contiene configuración local y no se registra en Git.
-
-### Levantar los servicios
-
-```bash
-docker compose up --build -d
-```
-
-Consulta su estado:
-
-```bash
-docker compose ps
-```
-
-Consulta los registros de la API:
-
-```bash
-docker compose logs api
-```
-
-Consulta los registros de PostgreSQL:
-
-```bash
-docker compose logs db
-```
-
-Al iniciar la API, Alembic aplica automáticamente las migraciones antes de ejecutar Uvicorn.
-
-### Detener los servicios
-
-Para eliminar los contenedores y la red, conservando los datos:
-
-```bash
-docker compose down
-```
-
-Para eliminar también el volumen y todos los datos de PostgreSQL:
-
-```bash
-docker compose down --volumes
-```
-
-Este último comando debe utilizarse con precaución porque elimina la base de datos local del entorno Docker.
-
-## Persistencia de PostgreSQL
-
-Docker Compose utiliza un volumen nombrado:
-
-```text
-pgdata
-```
-
-Este volumen conserva los datos aunque los contenedores sean eliminados y creados nuevamente.
-
-El flujo de persistencia es:
-
-```text
-PostgreSQL
-→ volumen pgdata
-→ docker compose down
-→ nuevos contenedores
-→ datos recuperados
-```
-
-## Endpoints principales
+## Endpoints
 
 ### Sensores
 
 | Método | Ruta | Operación |
 |---|---|---|
-| `POST` | `/sensors` | Crear sensor |
-| `GET` | `/sensors` | Listar sensores |
-| `GET` | `/sensors/{sensor_id}` | Consultar sensor |
-| `PATCH` | `/sensors/{sensor_id}` | Actualizar sensor |
-| `DELETE` | `/sensors/{sensor_id}` | Desactivar sensor |
+| `POST` | `/sensors` | Crear un sensor |
+| `GET` | `/sensors` | Listar sensores con `limit` y `offset` |
+| `GET` | `/sensors/{sensor_id}` | Consultar un sensor |
+| `PATCH` | `/sensors/{sensor_id}` | Actualizar un sensor |
+| `DELETE` | `/sensors/{sensor_id}` | Desactivar un sensor |
 
 ### Lecturas
 
 | Método | Ruta | Operación |
 |---|---|---|
-| `POST` | `/sensors/{sensor_id}/readings` | Crear lectura |
-| `GET` | `/sensors/{sensor_id}/readings` | Listar lecturas |
-| `GET` | `/readings/{reading_id}` | Consultar lectura |
-| `PATCH` | `/readings/{reading_id}` | Actualizar lectura |
-| `DELETE` | `/readings/{reading_id}` | Eliminar lectura |
+| `POST` | `/sensors/{sensor_id}/readings` | Registrar una lectura |
+| `GET` | `/sensors/{sensor_id}/readings` | Listar lecturas con `limit`, `offset`, `from` y `to` |
+| `GET` | `/readings/{reading_id}` | Consultar una lectura |
+| `PATCH` | `/readings/{reading_id}` | Actualizar una lectura |
+| `DELETE` | `/readings/{reading_id}` | Eliminar una lectura |
 
-### Estado del servicio
+### Estadísticas
 
 | Método | Ruta | Operación |
 |---|---|---|
-| `GET` | `/health` | Comprobar disponibilidad |
+| `GET` | `/sensors/{sensor_id}/statistics` | Obtener `minimum`, `maximum` y `average`; requiere `from` y `to` |
 
-## Ejemplo de registro de un sensor
+### Alertas
 
-Solicitud:
+| Método | Ruta | Operación |
+|---|---|---|
+| `GET` | `/sensors/{sensor_id}/alerts` | Listar alertas con paginación y filtros temporales |
+| `GET` | `/alerts/active` | Listar alertas abiertas o reconocidas |
+| `PATCH` | `/alerts/{alert_id}/status` | Cambiar el estado de una alerta |
 
-```json
-{
-  "id": "TEMP-01",
-  "name": "Sensor exterior",
-  "sensor_type": "temperature",
-  "unit": "C"
-}
-```
+### Observabilidad
 
-Respuesta esperada:
+| Método | Ruta | Operación |
+|---|---|---|
+| `GET` | `/health` | Comprobar la disponibilidad del servicio |
+| `GET` | `/metrics` | Consultar `requests_total`, `errors_total` y `uptime_seconds` |
 
-```json
-{
-  "id": "TEMP-01",
-  "name": "Sensor exterior",
-  "sensor_type": "temperature",
-  "unit": "C",
-  "is_active": true
-}
-```
+### Documentación
 
-## Ejemplo de registro de una lectura
+| Método | Ruta | Operación |
+|---|---|---|
+| `GET` | `/docs` | Abrir la documentación interactiva Swagger |
 
-Ruta:
+## Reglas de dominio
 
-```text
-POST /sensors/TEMP-01/readings
-```
+### Temperatura
 
-Solicitud:
+- `sensor_type`: `temperature`
+- `unit`: `C`
+- valor mínimo: `-273.15`
 
-```json
-{
-  "value": 24.5,
-  "unit": "C"
-}
-```
+### Humedad
 
-El flujo interno es:
+- `sensor_type`: `humidity`
+- `unit`: `%`
+- rango permitido: `0` a `100`
+
+También se rechazan valores no finitos, unidades incompatibles, lecturas para sensores inexistentes y lecturas para sensores desactivados.
+
+### Anomalías
+
+Si el sensor tiene umbral y se cumple:
 
 ```text
-Solicitud HTTP
-→ Router
-→ Schema Pydantic
-→ Service
-→ Repository
-→ Modelo SQLAlchemy
-→ SQLite o PostgreSQL
-→ Respuesta HTTP
+value > threshold
 ```
 
-## Verificaciones
+la lectura genera una alerta con estado inicial `open`.
 
-Ejecuta la suite completa:
+### Estados de alerta
+
+Las únicas transiciones válidas son:
+
+```text
+open -> acknowledged -> resolved
+```
+
+## Configuración
+
+Crea el archivo local a partir de la plantilla versionada:
+
+```bash
+cp .env.example .env
+```
+
+No almacenes secretos reales en el repositorio. Docker Compose lee `.env` automáticamente; para una ejecución directa, las variables necesarias deben estar disponibles en el entorno del proceso.
+
+| Variable | Uso |
+|---|---|
+| `APP_NAME` | Nombre mostrado por la aplicación |
+| `APP_VERSION` | Versión mostrada por la aplicación |
+| `LOG_LEVEL` | Nivel del logging estructurado |
+| `DATABASE_URL` | Conexión de SQLAlchemy; si no existe, usa `sqlite:///./sensorhub.db` |
+| `POSTGRES_USER` | Usuario de PostgreSQL utilizado principalmente por Docker Compose |
+| `POSTGRES_PASSWORD` | Contraseña local de PostgreSQL utilizada principalmente por Docker Compose |
+| `POSTGRES_DB` | Base de datos de PostgreSQL utilizada principalmente por Docker Compose |
+
+La aplicación acepta URLs `sqlite`, `postgresql+psycopg`, `postgresql` y `postgres`; estas dos últimas se normalizan para usar el controlador `psycopg`.
+
+## Ejecución local
+
+Desde la raíz del repositorio:
+
+```bash
+python -m venv .venv
+source .venv/bin/activate
+python -m pip install -r requirements.txt
+python -m alembic upgrade head
+python -m uvicorn app.main:app --reload
+```
+
+La configuración predeterminada usa SQLite. Los recursos principales quedan disponibles en:
+
+- API: <http://127.0.0.1:8000>
+- Swagger: <http://127.0.0.1:8000/docs>
+- Health: <http://127.0.0.1:8000/health>
+- Metrics: <http://127.0.0.1:8000/metrics>
+
+## Docker Compose
+
+```bash
+cp .env.example .env
+docker compose up --build -d
+docker compose ps
+docker compose logs api
+docker compose down
+```
+
+El servicio `api` ejecuta SensorHub y `db` ejecuta PostgreSQL 16. PostgreSQL cuenta con un healthcheck y la API espera a que alcance el estado `healthy`. Antes de iniciar Uvicorn, el contenedor de la API ejecuta `alembic upgrade head`. El volumen nombrado `pgdata` conserva los datos cuando los contenedores se recrean o se detienen con `docker compose down`.
+
+El `Dockerfile` parte de Python 3.12-slim, instala `requirements.txt`, copia la aplicación y las migraciones, acepta `PORT` y aplica las migraciones antes de iniciar Uvicorn.
+
+También se puede construir y ejecutar únicamente la imagen de la API con SQLite:
+
+```bash
+docker build -t sensorhub:dev .
+docker run --rm -p 127.0.0.1:8000:8000 sensorhub:dev
+```
+
+## Migraciones
+
+```bash
+python -m alembic upgrade head
+python -m alembic current
+python -m alembic history
+```
+
+Alembic mantiene una cadena lineal que permite reproducir el esquema completo desde una base vacía. El único head actual es:
+
+```text
+b7f2c8d91e34
+```
+
+## Pruebas y calidad
 
 ```bash
 python -m pytest
-```
-
-Ejecuta las pruebas sin cobertura:
-
-```bash
-python -m pytest --no-cov -q
-```
-
-Revisa el formato y las reglas de calidad:
-
-```bash
 python -m ruff check app tests migrations
+python -m mypy app
 ```
 
-Comprueba el tipado:
-
-```bash
-mypy app
-```
-
-Valida la configuración de Docker Compose sin mostrar los valores expandidos:
-
-```bash
-docker compose config > /dev/null && echo "Configuración válida"
-```
-
-Consulta la migración aplicada dentro del contenedor:
-
-```bash
-docker compose exec api python -m alembic current
-```
-
-Estado verificado después de incorporar Docker Compose, PostgreSQL y Alembic:
+Estado final verificado:
 
 ```text
-57 pruebas aprobadas
-Cobertura total: 87.89 %
-Ruff: sin errores
-Mypy: sin errores
-Docker Compose: API y PostgreSQL funcionando
-PostgreSQL: estado healthy
-Alembic: migración inicial aplicada
-Swagger: accesible
+147 passed
+95.48% coverage en WSL
+95.69% coverage en Docker con Python 3.12
+mínimo requerido: 80%
+Ruff: All checks passed
+Mypy: 0 errores en 30 archivos
 ```
 
-## Pruebas implementadas
+La suite combina pruebas unitarias, de repositorios con SQLite temporal, HTTP con `TestClient` y de integración. Las bases temporales evitan modificar `sensorhub.db`.
 
-La suite incluye:
+## CI/CD
 
-- pruebas unitarias de servicios con repositorios falsos;
-- pruebas de repositorios con SQLite temporal;
-- pruebas HTTP mediante `TestClient`;
-- pruebas de integración con routers, servicios, repositorios, modelos y SQLite reales.
+### CI — GitHub Actions
 
-Las bases temporales evitan modificar `sensorhub.db` durante las pruebas.
-
-## Seguridad de configuración
-
-Los valores locales de PostgreSQL se almacenan en:
+El workflow ejecuta este flujo con Python 3.12:
 
 ```text
-.env
+Ruff -> Mypy -> Pytest
 ```
 
-Este archivo se encuentra excluido mediante `.gitignore`.
+Se activa con cada `push` y con los pull requests cuyo destino es `main`.
 
-El repositorio solo conserva:
+### CD — Render
 
-```text
-.env.example
-```
+`render.yaml` define un servicio web con runtime Docker desde la rama `main`, un PostgreSQL 16 administrado y `/health` como healthcheck. Render tiene Auto-Deploy configurado con `checksPass`, por lo que despliega después de que los checks terminen satisfactoriamente.
 
-con valores de referencia que deben sustituirse localmente.
+## Producción
 
-No deben almacenarse contraseñas reales en:
+- [API](https://sensorhub-api-8yfj.onrender.com)
+- [Health](https://sensorhub-api-8yfj.onrender.com/health)
+- [Metrics](https://sensorhub-api-8yfj.onrender.com/metrics)
+- [Swagger](https://sensorhub-api-8yfj.onrender.com/docs)
 
-- el código fuente;
-- `docker-compose.yml`;
-- `README.md`;
-- `AI_LOG.md`;
-- el historial de Git.
+Los endpoints de verificación `/health`, `/metrics` y `/docs` fueron comprobados manualmente con respuesta HTTP `200`.
 
 ## Decisiones arquitectónicas
 
-Las decisiones principales se documentan en:
-
-```text
-docs/adr/
-```
-
-Entre ellas se encuentran:
-
-- persistencia mediante SQLAlchemy 2.x;
-- uso local de SQLite;
-- conexión configurable con PostgreSQL;
-- arquitectura en capas;
-- inyección de dependencias con FastAPI;
-- separación entre modelos ORM y esquemas Pydantic;
-- uso de Alembic para versionar el esquema.
-
-## Historial del curso
-
-Las carpetas semanales conservan los ejercicios anteriores:
-
-- `semana1/`: principios SOLID y driver UART;
-- `semana2/`: Scrum, historias de usuario y TDD;
-- `app/`: producto SensorHub desarrollado a partir de la Semana 3.
-
-El driver UART continúa disponible dentro del historial de la Semana 1, pero ya no representa el producto principal del repositorio.
+- [ADR 0001 — API con FastAPI y Pydantic](docs/adr/0001-api-fastapi-pydantic.md)
+- [ADR 0002 — Persistencia con SQLAlchemy y SQLite](docs/adr/0002-persistencia-sqlalchemy-sqlite.md)
+- [ADR 0003 — Arquitectura en capas y dependencias de FastAPI](docs/adr/0003-arquitectura-capas-dependencias-fastapi.md)
+- [ADR 0004 — Monolito modular frente a microservicios](docs/adr/0004-monolito-modular-frente-a-microservicios.md)
 
 ## Uso de inteligencia artificial
 
-El uso de herramientas de IA durante el desarrollo se encuentra documentado en:
+El uso de IA durante el desarrollo se documenta en [AI_LOG.md](AI_LOG.md). La bitácora registra el objetivo, la herramienta o prompt, la propuesta recibida, la decisión tomada y la revisión humana.
 
-```text
-AI_LOG.md
-```
+## Historial del curso
 
-La bitácora registra los prompts utilizados, las propuestas obtenidas, las decisiones tomadas, los cambios realizados y su justificación.
+El repositorio conserva ejercicios de semanas anteriores, como `semana1/` y `semana2/`, a modo de material histórico. SensorHub, dentro de `app/`, es el producto principal y este README describe su estado final.

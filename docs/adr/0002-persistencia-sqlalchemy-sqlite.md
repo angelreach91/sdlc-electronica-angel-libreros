@@ -3,6 +3,7 @@
 - Estado: Aceptado
 - Fecha: 2026-07-28
 - Actualizado: 2026-07-31
+- Revisado: 2026-08-21
 - Nota: el modelo de datos original fue ampliado durante el ejercicio integrador de SensorHub.
 
 ## Contexto
@@ -15,7 +16,7 @@ Durante la primera implementación solamente se almacenaban lecturas con tempera
 
 ## Decisión
 
-Se utilizará SQLAlchemy 2.x como ORM y SQLite como base de datos inicial.
+La decisión inicial fue utilizar SQLAlchemy 2.x como ORM y SQLite como base de datos.
 
 La implementación incluye:
 
@@ -27,11 +28,23 @@ La implementación incluye:
 - un procedimiento reproducible para crear las tablas;
 - pruebas con bases SQLite temporales.
 
-La inicialización del esquema se ejecuta mediante:
+En esa etapa, la inicialización del esquema se ejecutaba mediante:
 
 ```bash
 python -m app.init_db
 ```
+
+## Revisión final — 2026-08-21
+
+SQLAlchemy 2.x se conserva como capa de persistencia. La evolución del proyecto no sustituyó el ORM ni el patrón repositorio; amplió los motores y el proceso de administración del esquema:
+
+- SQLite continúa disponible como fallback local y como base de datos para pruebas automatizadas;
+- PostgreSQL 16 es la persistencia utilizada por Docker Compose y por el despliegue de producción en Render;
+- `DATABASE_URL` selecciona y configura la conexión sin modificar routers ni servicios;
+- Alembic administra las migraciones versionadas;
+- la cadena de migraciones tiene un único head: `b7f2c8d91e34`.
+
+Por tanto, SQLite describe la decisión inicial y sigue siendo una opción soportada, pero ya no es la única persistencia actual. Los cambios de esquema se aplican mediante Alembic, incluida la preparación de una base vacía hasta `upgrade head`.
 
 ## Evolución del modelo de datos
 
@@ -47,7 +60,7 @@ La primera versión de la tabla `readings` contenía:
 
 Esta estructura fue suficiente para practicar la configuración inicial de SQLAlchemy, las sesiones y la persistencia.
 
-### Modelo actual
+### Modelo final
 
 Durante el ejercicio integrador se creó una tabla independiente para sensores y se modificó el modelo de lecturas.
 
@@ -55,8 +68,10 @@ La tabla `sensors` contiene:
 
 - `id` como clave primaria;
 - `name`;
+- `location`;
 - `sensor_type`;
 - `unit`;
+- `threshold`;
 - `is_active`.
 
 La tabla `readings` contiene:
@@ -68,6 +83,18 @@ La tabla `readings` contiene:
 - `received_at`.
 
 Cada lectura representa una sola medición y se asocia con un sensor.
+
+La tabla `alerts` contiene:
+
+- `id` como clave primaria;
+- `sensor_id`;
+- `reading_id`;
+- `value`;
+- `threshold`;
+- `status`;
+- `created_at`.
+
+`status` conserva los estados `open`, `acknowledged` y `resolved` definidos para el ciclo de vida de las alertas.
 
 El modelo ORM declara la relación:
 
@@ -98,23 +125,25 @@ La implementación utiliza:
 
 Esto mantiene la persistencia separada de las reglas de negocio y evita escribir consultas SQL directamente dentro de los routers.
 
-### SQLite
+### SQLite y PostgreSQL
 
-SQLite permite utilizar una base de datos real sin instalar o administrar un servidor externo.
+SQLite permitió utilizar inicialmente una base de datos real sin instalar o administrar un servidor externo y continúa siendo útil como fallback local y para pruebas.
 
-Es apropiada para esta etapa porque:
+Es apropiada para desarrollo local y pruebas porque:
 
 - funciona mediante un archivo local;
 - simplifica la instalación;
-- permite crear bases temporales durante las pruebas;
-- es suficiente para el volumen y concurrencia actuales;
-- puede sustituirse posteriormente sin modificar los routers.
+- permite ejecutar pruebas aisladas con bases temporales.
+
+La separación provista por SQLAlchemy y los repositorios permitió incorporar PostgreSQL 16 sin modificar las capas HTTP y de negocio. PostgreSQL es ahora el motor utilizado en Docker Compose y producción.
 
 ### Normalización
 
-La tabla `sensors` almacena los metadatos que identifican a cada sensor.
+La tabla `sensors` almacena los metadatos que identifican a cada sensor, incluida su ubicación y el umbral opcional para generar alertas.
 
 La tabla `readings` almacena las mediciones relacionadas con esos sensores.
+
+La tabla `alerts` almacena los eventos generados cuando una lectura supera el umbral del sensor y conserva su estado de atención.
 
 Separar ambas entidades evita repetir en cada lectura:
 
@@ -176,11 +205,11 @@ Es sencillo y útil para algunos dobles de prueba, pero los datos se perderían 
 
 No es adecuado como persistencia principal.
 
-### PostgreSQL
+### PostgreSQL — evaluación inicial y evolución
 
-Ofrece mayor capacidad para producción, concurrencia y despliegue, pero añade complejidad operativa innecesaria para esta etapa.
+En la decisión inicial, PostgreSQL ofrecía mayor capacidad para producción, concurrencia y despliegue, pero añadía complejidad operativa innecesaria para esa etapa.
 
-La arquitectura permite considerarlo posteriormente sin reescribir las capas HTTP y de negocio.
+La evolución final confirmó la sustituibilidad prevista: PostgreSQL 16 se incorporó mediante `DATABASE_URL` y se utiliza en Docker Compose y Render sin reescribir las capas HTTP y de negocio.
 
 ### Una sola tabla para sensores y lecturas
 
@@ -190,27 +219,30 @@ Se descartó al ampliar SensorHub porque duplicaría los metadatos del sensor y 
 
 ### Positivas
 
-- Persistencia real de sensores y lecturas.
+- Persistencia real de sensores, lecturas y alertas.
 - Modelos ORM tipados.
 - Separación entre configuración, modelos, repositorios y servicios.
 - Pruebas independientes mediante SQLite temporal.
 - Sesiones controladas mediante inyección de dependencias.
 - Posibilidad de sustituir SQLite por otra base de datos.
+- Uso de PostgreSQL 16 en los entornos que requieren un servidor de base de datos.
+- Evolución reproducible del esquema mediante migraciones de Alembic.
 - Menor duplicación de metadatos de sensores.
 
 ### Negativas
 
-- SQLite tiene limitaciones de concurrencia y escalabilidad.
-- SQLite no conserva completamente la información de zona horaria en `DateTime`.
-- El esquema todavía no utiliza migraciones versionadas.
-- Los cambios estructurales requieren recrear manualmente la base local.
+- El fallback SQLite mantiene limitaciones de concurrencia, escalabilidad y conservación de zona horaria en `DateTime`.
+- La operación con PostgreSQL añade un servicio externo y configuración mediante variables de entorno.
+- Los cambios estructurales deben mantenerse coordinados con las migraciones versionadas de Alembic.
 - La clave foránea está declarada, pero SQLite no la aplica automáticamente mientras no se active `PRAGMA foreign_keys`.
 - La solución utiliza más archivos que una implementación directa con `sqlite3`.
 
 ## Resultado
 
-SensorHub utiliza SQLAlchemy 2.x y SQLite para persistir sensores y lecturas mediante repositorios tipados.
+SensorHub utiliza SQLAlchemy 2.x y repositorios tipados para persistir sensores, lecturas y alertas.
 
-La decisión inicial de utilizar SQLAlchemy y SQLite se conserva. Lo que cambió fue el modelo de datos: la tabla original de lecturas fue reemplazada por una estructura normalizada con sensores independientes y lecturas de una sola magnitud.
+La decisión inicial de utilizar SQLAlchemy y SQLite se conserva como origen de la arquitectura de persistencia. El estado final mantiene SQLite como fallback local y base para pruebas, utiliza PostgreSQL 16 con Docker Compose y en producción, y administra el esquema con Alembic.
 
-El funcionamiento fue comprobado mediante pruebas de repositorios, pruebas de integración con SQLite temporal y validación manual desde Swagger.
+Además, el modelo evolucionó desde la tabla original de lecturas hasta una estructura normalizada con sensores —incluidos `location` y `threshold`—, lecturas de una sola magnitud y alertas con `status`.
+
+El funcionamiento fue comprobado mediante pruebas de repositorios e integración, una base vacía migrada hasta el único head y validaciones con SQLite y PostgreSQL.
